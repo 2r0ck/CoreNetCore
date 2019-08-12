@@ -1,0 +1,7 @@
+{
+  "testJsonConfigKey": "jsonValue",
+  "parentJsonKey": {
+    "childJsonKey": "ValuehildJsonKey"
+  },
+  "envCustomTest": "EnvCustomTest JSON Value"
+}
