@@ -3,5 +3,6 @@
   "parentJsonKey": {
     "childJsonKey": "ValuehildJsonKey"
   },
-  "envCustomTest": "EnvCustomTest JSON Value"
+  "envCustomTest": "EnvCustomTest JSON Value",
+  "UUID_FILE_NAME": "UUID.txt"
 }
