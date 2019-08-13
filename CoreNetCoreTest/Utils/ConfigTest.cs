@@ -12,11 +12,6 @@ namespace CoreNetCoreTest.Utils
     [TestClass]
     public class ConfigTest
     {
-       
-
-
-
-
 
         [TestMethod]
         public void DefaultConfigFile_Test()
@@ -30,7 +25,7 @@ namespace CoreNetCoreTest.Utils
         public void CustomConfigFiles_Test()
         {
             //Set variables
-            var files = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\Config"));
+            var files = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\TestConfig"));
             Environment.SetEnvironmentVariable(Core.ENVRIOMENT_CONFIG_FILE_NAMES, string.Join(",", files));
                         
             var factory = ConfigurationFactory.CreateConfiguration();
@@ -78,7 +73,7 @@ namespace CoreNetCoreTest.Utils
             var testJSONValue = "EnvCustomTest JSON Value";
 
             //Set cfg
-            var files = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\Config"));
+            var files = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\TestConfig"));
             Environment.SetEnvironmentVariable(Core.ENVRIOMENT_CONFIG_FILE_NAMES, string.Join(",", files));
 
             //Set variables

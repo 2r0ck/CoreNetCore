@@ -54,6 +54,7 @@ namespace CoreNetCore
         public void Init(Func<IServiceCollection, IServiceCollection> customConfiguredFunc=null)
         {
             var sCollection = new ServiceCollection()
+
                             .AddSingleton<IConfiguration>(provider => ConfigurationFactory.CreateConfiguration())
                             .AddScoped<IAppId,AppId>();
             if (customConfiguredFunc != null)
