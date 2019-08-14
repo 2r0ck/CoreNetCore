@@ -1,14 +1,12 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using System;
 using System.Diagnostics;
 using System.IO;
-using Microsoft.Extensions.Configuration;
 
 namespace CoreNetCore.Utils
 {
     public static class ConfigurationFactory
     {
-      
-
         private static IConfigurationBuilder Configure(IConfigurationBuilder config, string environmentName)
         {
             config.SetBasePath(Directory.GetCurrentDirectory());
@@ -57,20 +55,10 @@ namespace CoreNetCore.Utils
 
             var config = new ConfigurationBuilder();
             var configured = Configure(config, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
-            return configured.Build();            
+            return configured.Build();
         }
 
-        public static string GetStrValue(this IConfiguration config, string key, bool assert = false)
-        {
-            var value = config.GetValue<string>(key);
-            if (assert && string.IsNullOrEmpty(value))
-            {
-                var err = $"Value ${key} not defined in config";
-                Trace.TraceError(err);
-                throw new InvalidProgramException(err);
-            }
-            return value;
-        }
+       
 
         #region Use for ASP.NET Core Web applications.
 

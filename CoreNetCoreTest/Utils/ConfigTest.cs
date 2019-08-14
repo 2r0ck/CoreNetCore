@@ -70,7 +70,7 @@ namespace CoreNetCoreTest.Utils
 
             var testJSONAndEnvriomentKey = "envCustomTest";
             var testEnvriomentValue = "envCustomTest ENV VALUE";
-            var testJSONValue = "EnvCustomTest JSON Value";
+            //var testJSONValue = "EnvCustomTest JSON Value";
 
             //Set cfg
             var files = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\TestConfig"));

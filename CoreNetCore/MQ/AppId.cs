@@ -1,24 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CoreNetCore.Utils;
+using Microsoft.Extensions.Configuration;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using CoreNetCore.Utils;
-using Microsoft.Extensions.Configuration;
 
 namespace CoreNetCore.MQ
 {
-
     public class AppId : IAppId
     {
-        private string _currentUID;    
+        private string _currentUID;
 
         private IConfiguration configuration;
 
         public AppId(IConfiguration _configuration)
         {
             configuration = _configuration;
-        }       
+        }
+
         public string CurrentUID
         {
             get
@@ -31,7 +30,7 @@ namespace CoreNetCore.MQ
             }
         }
 
-       
+        public string Test { get; set; }
 
         //APPID
         private string GetUID()
@@ -52,7 +51,7 @@ namespace CoreNetCore.MQ
             {
                 uid = Guid.NewGuid().ToString();
                 File.WriteAllText(filename, uid, Encoding.UTF8);
-                Trace.TraceInformation($"Write new appid to file [{filename}]");               
+                Trace.TraceInformation($"Write new appid to file [{filename}]");
             }
             return uid;
         }

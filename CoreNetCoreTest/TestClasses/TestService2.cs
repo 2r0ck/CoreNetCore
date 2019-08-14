@@ -9,6 +9,7 @@ namespace CoreNetCoreTest.TestClasses
     {
         public TestService2(IAppId appId, IConfiguration configuration) : base(appId, configuration)
         {
+         
         }     
         
 

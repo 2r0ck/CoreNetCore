@@ -9,6 +9,7 @@ using System.IO;
 using Microsoft.Extensions.Configuration;
 using CoreNetCore.MQ;
 using CoreNetCore.Utils;
+using System.Diagnostics;
 
 namespace CoreNetCoreTest
 {
@@ -58,9 +59,13 @@ namespace CoreNetCoreTest
             var resolver = Core.Current.ServiceProvider;
             var service = resolver.GetService<BaseService>();
             var id = service.AppId;
- 
+
+         
+        
 
             IConfiguration configuration = resolver.GetService<IConfiguration>();
+            var res = resolver.GetService<IAppId>();
+    
 
             var filename = configuration.GetStrValue(Core.CONFIG_KEY_UUID_FILE_NAME);
 
