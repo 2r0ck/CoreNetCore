@@ -8,13 +8,26 @@ namespace CoreNetCore.Models
     [Serializable]
     public class ChannelQueueParam
     {
+        /// <summary>
+        /// Имя очереди
+        /// </summary>
         public string Name { get; set; }
 
+        /// <summary>
+        /// Использовать только одно подключение в очередь
+        /// </summary>
         public bool Exclusive { get; set; }
 
+        /// <summary>
+        /// Автоматически постанавливается после рестарта
+        /// </summary>
         public bool Durable { get; set; }
 
+        /// <summary>
+        /// Автоматически удаляется после удаления последнего подписчика 
+        /// </summary>
         public bool AutoDelete { get; set; }
+
         [JsonProperty("Arguments")]
         public IDictionary<string, object> Arguments { get; set; }
 

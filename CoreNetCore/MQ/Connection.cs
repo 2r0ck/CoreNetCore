@@ -2,6 +2,7 @@
 using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -16,6 +17,7 @@ namespace CoreNetCore.MQ
         public event Action<string> Disconnected;
 
         public event Action<string> Connected;
+        public IModel Channel => channel;
 
         #region config
 
@@ -30,13 +32,14 @@ namespace CoreNetCore.MQ
 
         #endregion config
 
-        #region disposed_objects 
+        #region disposed_objects
+
         private IConnection connection;
         private IModel channel;
 
-        #endregion
+        #endregion disposed_objects
 
-        public Connection(IAppId appId,IConfiguration configuration)
+        public Connection(IAppId appId, IConfiguration configuration)
         {
             IsConnected = false;
             ReadConfig(configuration);
@@ -61,7 +64,7 @@ namespace CoreNetCore.MQ
             if (!ushort.TryParse(configuration.GetStrValue("mq.heartbeat"), out heartbeat))
             {
                 Trace.TraceWarning(string.Format(warn, "mq.heartbeat"));
-            }           
+            }
 
             port = 0;
             if (!int.TryParse(configuration.GetStrValue("mq:host:port"), out port))
@@ -80,6 +83,9 @@ namespace CoreNetCore.MQ
             password = configuration.GetStrValue("mq:host:mserv:password", true);
         }
 
+        /// <summary>
+        /// Инициализирует подключение RabbitMQ
+        /// </summary>
         public void Start()
         {
             Connect(1);
@@ -123,9 +129,10 @@ namespace CoreNetCore.MQ
                 channel = connection.CreateModel();
 
                 #region BasicQos help
+
                 //qos:
-                //This method requests a specific quality of service. 
-                //The QoS can be specified for the current channel or for all channels on the connection. 
+                //This method requests a specific quality of service.
+                //The QoS can be specified for the current channel or for all channels on the connection.
                 //https://www.rabbitmq.com/amqp-0-9-1-reference.html
 
                 //Parameters:
@@ -138,7 +145,8 @@ namespace CoreNetCore.MQ
 
                 //bit global
                 //RabbitMQ has reinterpreted this field.The original specification said: "By default the QoS settings apply to the current channel only. If this field is set, they are applied to the entire connection." Instead, RabbitMQ takes global = false to mean that the QoS settings should apply per - consumer(for new consumers on the channel; existing ones being unaffected) and global = true to mean that the QoS settings should apply per - channel.
-                #endregion
+
+                #endregion BasicQos help
 
                 channel.BasicQos(0, prefetch, false);
                 Trace.TraceInformation($"Prefetch: {prefetch}");
@@ -154,19 +162,58 @@ namespace CoreNetCore.MQ
             }
         }
 
-        public bool Listen(ChannelParam channelParam,Action<byte[]> callback)
+        /// <summary>
+        /// Прослушивание очереди сообщений
+        /// </summary>
+        /// <param name="cparam">Парамеры создания обмена, очереди и подписчика</param>
+        /// <param name="callback">Функция обратного вызова при получении сообщения</param>
+        /// <returns></returns>
+        public string Listen(ConsumerParam cparam, Action<MessageReceiveEventArgs> callback)
         {
             try
             {
-                if(channelParam?.QueueParam == null)
+                if (cparam?.QueueParam == null)
                 {
                     throw new CoreException("QueueParam not declared");
                 }
+                //Queue declare
+                Trace.TraceInformation($"Declare queue [{cparam.QueueParam.Name}]. Options: {cparam.QueueParam.ToJson()}");
+                channel.QueueDeclare(cparam.QueueParam.Name,
+                    cparam.QueueParam.Durable,
+                    cparam.QueueParam.Exclusive,
+                    cparam.QueueParam.AutoDelete,
+                    cparam.QueueParam.Arguments);
 
-                Trace.TraceInformation($"Creating queue [{channelParam.QueueParam.Name}]. Options: {channelParam.QueueParam.ToJson()}");
-                channel.QueueDeclare(channelParam.QueueParam.Name, channelParam.QueueParam.Durable, channelParam.QueueParam.Exclusive, channelParam.QueueParam.AutoDelete, channelParam.QueueParam.Arguments);
+                if (cparam.ExchangeParam != null)
+                {
+                    //Exchange declare
+                    channel.ExchangeDeclare(cparam.ExchangeParam.Name,
+                        cparam.ExchangeParam.Type,
+                        cparam.ExchangeParam.Durable,
+                        cparam.ExchangeParam.AutoDelete,
+                        cparam.ExchangeParam.Arguments);
+                    Trace.TraceInformation($"Bind queue [{cparam.QueueParam.Name}] to exchange [{cparam.ExchangeParam.Name}({cparam.ExchangeParam.Type})]. AppId=[{AppId.CurrentUID}] ");
+                    //Bind queue and exchange
+                    channel.QueueBind(cparam.QueueParam.Name, cparam.ExchangeParam.Name, AppId.CurrentUID);
+                }
+                //create consumer and subscribe
 
-                return true;
+                var consumer = new EventingBasicConsumer(channel);
+                if (!string.IsNullOrEmpty(cparam.ConsumerTag))
+                {
+                    consumer.ConsumerTag = consumer.ConsumerTag;
+                }
+                consumer.Received += (model, ea) =>
+                {
+                    if (callback != null)
+                    {
+                        var msg = new MessageReceiveEventArgs(ea.Body,
+                            () => channel.BasicAck(ea.DeliveryTag, multiple: false),
+                            (autoRepit) => channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit));
+                        callback.Invoke(msg);
+                    }
+                };
+                return channel.BasicConsume(cparam.QueueParam.Name, cparam.AutoAck, consumer);
             }
             catch (Exception ex)
             {
@@ -174,13 +221,57 @@ namespace CoreNetCore.MQ
             }
         }
 
+        /// <summary>
+        /// Отмена подписчика по ConsumerTag
+        /// </summary>
+        /// <param name="consumerTag"></param>
+        public void Cancel(string consumerTag)
+        {
+            try
+            {
+                channel.BasicCancel(consumerTag);
+                Trace.TraceInformation($"Cancel consumer [{consumerTag}]");
+            }
+            catch (Exception ex)
+            {
+                throw new CoreException(ex);
+            }
+        }
 
+        /// <summary>
+        /// Рассылка сообщения
+        /// </summary>
+        /// <param name="pparam">Параметры сообщения</param>
+        /// <param name="content">Сообщение</param>
+        /// <param name="customProperties">Дополнительные параметры сообщения. Пример: Channel.CreateBasicProperties();</param>
+        public void Publish(ProducerParam pparam, byte[] content,IBasicProperties customProperties)
+        {
+            try
+            {
+                if (pparam?.ExchangeParam != null)
+                {
+                    //Exchange declare
+                    channel.ExchangeDeclare(pparam.ExchangeParam.Name,
+                        pparam.ExchangeParam.Type,
+                        pparam.ExchangeParam.Durable,
+                        pparam.ExchangeParam.AutoDelete,
+                        pparam.ExchangeParam.Arguments);
+                }
+                channel.BasicPublish(exchange: pparam?.ExchangeParam?.Name,
+                    routingKey: pparam?.RoutingKey,
+                    basicProperties: customProperties,
+                    body: content);
+            }catch(Exception ex)
+            {
+                throw new CoreException(ex);
+            }
+        }
 
 
         private void Connection_ConnectionShutdown(object sender, ShutdownEventArgs e)
         {
             Trace.TraceWarning("MQ Disconnected. MQ Starting..");
-            Disconnected?.Invoke(AppId.CurrentUID);            
+            Disconnected?.Invoke(AppId.CurrentUID);
             Start();
         }
 
@@ -208,7 +299,6 @@ namespace CoreNetCore.MQ
                 Trace.TraceError("Core connection dispose exception:");
                 Trace.TraceError(ex.ToString());
             }
-            
         }
     }
 }
