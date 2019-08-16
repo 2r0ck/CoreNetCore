@@ -1,25 +1,46 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
+﻿using CoreNetCore;
+using CoreNetCoreParallelTest.TestServices;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [assembly: Parallelize(Workers = 0, Scope = ExecutionScope.MethodLevel)]
+
 namespace CoreNetCoreParallelTest.MQ
-{  
+{
     [TestClass]
     public class ConnectionTest
     {
         [TestMethod]
-        public void Run1()
+        public void RunInstance1()
         {
-            Thread.Sleep(3000);
+            var c = new Core();
+            c.Init((sc) => { return sc.AddScoped<IPlatformService, Service1>(); }, "config1.json");
+            var resolver = c.ServiceProvider;
+            var service = resolver.GetService<IPlatformService>();
+            service.Run(null);
         }
 
         [TestMethod]
-        public void Run2()
+        public void RunInstance2()
         {
-            Thread.Sleep(3000);
+            var c = new Core();
+            c.Init((sc) => { return sc.AddScoped<IPlatformService, Service2>(); }, "config2.json");
+            var resolver = c.ServiceProvider;
+            var service = resolver.GetService<IPlatformService>();
+            service.Run(null);
+        }
+
+        [TestMethod]
+        public void RunInstance3()
+        {
+            var hostBuilder = new CoreHostBuilder();
+
+            hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile("config1.json", true, true))
+                       .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
+                       .Build();
+
+            hostBuilder.RunPlatformService(null);
         }
     }
 }

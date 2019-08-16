@@ -1,0 +1,15 @@
+{
+  "UUID_FILE_NAME": "UUID3.txt",
+  "mq": {
+    "maxRecoveryCount": 5,
+    "networkRecoveryInterval": "2000",
+    "host": {
+      "host": "localhost",
+      "mserv": {
+        "username": "admin",
+        "password": "root"
+      },
+      "port": "5672"
+    }
+  }
+}

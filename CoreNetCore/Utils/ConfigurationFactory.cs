@@ -7,11 +7,11 @@ namespace CoreNetCore.Utils
 {
     public static class ConfigurationFactory
     {
-        private static IConfigurationBuilder Configure(IConfigurationBuilder config, string environmentName)
+        private static IConfigurationBuilder Configure(IConfigurationBuilder config, string environmentName, string configFilePath)
         {
             config.SetBasePath(Directory.GetCurrentDirectory());
 
-            var fileNamesStr = Environment.GetEnvironmentVariable(Core.ENVRIOMENT_CONFIG_FILE_NAMES);
+            var fileNamesStr = configFilePath ?? Environment.GetEnvironmentVariable(Core.ENVRIOMENT_CONFIG_FILE_NAMES);
             if (string.IsNullOrEmpty(fileNamesStr))
             {
                 fileNamesStr = $"appsettings.json,appsettings.{environmentName}.json";
@@ -42,7 +42,7 @@ namespace CoreNetCore.Utils
         /// Get config for .NET Core Console applications.
         /// </summary>
         /// <returns></returns>
-        public static IConfiguration CreateConfiguration()
+        public static IConfiguration CreateConfiguration(string configFilePath=null)
         {
             //Enable if need add aspnet core
             //var env = new HostingEnvironment
@@ -54,7 +54,7 @@ namespace CoreNetCore.Utils
             //};
 
             var config = new ConfigurationBuilder();
-            var configured = Configure(config, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
+            var configured = Configure(config, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), configFilePath);
             return configured.Build();
         }
 

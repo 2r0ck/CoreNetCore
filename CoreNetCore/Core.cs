@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace CoreNetCore
 {
-    public sealed class Core
+    public class Core
     {
         #region Const
 
@@ -19,13 +19,13 @@ namespace CoreNetCore
 
         #endregion Const
 
-        public static Core Current => _instance;
+        //public static Core Current => _instance;
 
-        internal static readonly Core _instance = new Core();
+        //internal static readonly Core _instance = new Core();
 
-        private Core()
-        {
-        }
+        //private Core()
+        //{
+        //}
 
         private ServiceProvider serviceProvider;
 
@@ -53,11 +53,17 @@ namespace CoreNetCore
         /// Initialize bases services.
         /// </summary>
         /// <param name="customConfiguredFunc">Func for custom configured DI</param>
-        public void Init(Func<IServiceCollection, IServiceCollection> customConfiguredFunc = null)
+        /// <param name="configFilePath">Config file name</param>
+        /// <remarks>
+        /// Config path priority:
+        /// 1) configFilePath (for Testing)
+        /// 2) ENVRIOMENT_CONFIG_FILE_NAMES
+        /// 3) appsettings.json,appsettings.{environmentName}.json (by Default)
+        /// </remarks>
+        public void Init(Func<IServiceCollection, IServiceCollection> customConfiguredFunc = null, string configFilePath = null)
         {
             var sCollection = new ServiceCollection()
-
-                            .AddSingleton<IConfiguration>(provider => ConfigurationFactory.CreateConfiguration())
+                            .AddSingleton<IConfiguration>(provider => ConfigurationFactory.CreateConfiguration(configFilePath))
                             .AddScoped<IAppId, AppId>();
             if (customConfiguredFunc != null)
             {

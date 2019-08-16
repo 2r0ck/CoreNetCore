@@ -1,21 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using CoreNetCore;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.Extensions.DependencyInjection;
-using CoreNetCoreTest.TestClasses;
-using System.IO;
-using Microsoft.Extensions.Configuration;
+﻿using CoreNetCore;
 using CoreNetCore.MQ;
 using CoreNetCore.Utils;
+using CoreNetCoreTest.TestClasses;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Diagnostics;
+using System.IO;
 
 namespace CoreNetCoreTest
 {
     [TestClass]
-   public class CoreTest
-    {      
+    public class CoreTest
+    {
         //todo: test DI
         //test create service
 
@@ -51,7 +48,6 @@ namespace CoreNetCoreTest
             Assert.AreNotEqual(test1.TID, test2.TID);
         }
 
-
         [TestMethod]
         public void DI_TestBaseRunning()
         {
@@ -60,12 +56,8 @@ namespace CoreNetCoreTest
             var service = resolver.GetService<BaseService>();
             var id = service.AppId;
 
-         
-        
-
             IConfiguration configuration = resolver.GetService<IConfiguration>();
             var res = resolver.GetService<IAppId>();
-    
 
             var filename = configuration.GetStrValue(Core.CONFIG_KEY_UUID_FILE_NAME);
 
@@ -90,5 +82,18 @@ namespace CoreNetCoreTest
             Assert.IsTrue(true);
         }
 
+        [TestMethod]
+        public void DI_DoubleScope_Test()
+        {
+            Core.Current.Init(sc =>
+            {
+                return sc
+                        .AddScoped<ITestService, TestService_One>()
+                        .AddScoped<ITestService, TestService_Second>();
+            });
+            var resolver = Core.Current.ServiceProvider;
+            var test1 = resolver.GetService<ITestService>();
+            Trace.WriteLine(test1.TID);
+        }
     }
 }
