@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
+using System.IO;
 
 namespace TestPlatformService
 {
@@ -11,7 +12,13 @@ namespace TestPlatformService
         static void Main(string[] args)
         {
 
-            Trace.TraceInformation("test");
+            Stream myFile = File.Create("TestPlatformServiceLog.txt");
+
+            TextWriterTraceListener myTextListener = new
+               TextWriterTraceListener(myFile);
+            Trace.Listeners.Add(myTextListener);
+            Trace.AutoFlush = true;
+
 
             var hostBuilder = new CoreHostBuilder();
 
@@ -23,9 +30,9 @@ namespace TestPlatformService
                        )
                        .Build();
 
-            hostBuilder.RunPlatformService(new[] { "service1", "service2", "Query1" });
+            hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
 
-
+            
         }
     }
 }

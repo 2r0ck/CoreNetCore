@@ -76,36 +76,53 @@ namespace TestPlatformService
 
         private void CoreConnection_Connected(string appId)
         {
-            var exchangeName = Name + ".fanout";
-            var consumer = new ConsumerParam()
+            try
             {
-                ExchangeParam = new ChannelExchangeParam()
-                {
-                    Name = exchangeName,
-                    Type = ExchangeTypes.EXCHANGETYPE_FANOUT,
-                    Durable = true
-                },
-                QueueParam = new ChannelQueueParam()
-                {
-                    Name = exchangeName + "." + appId,
-                }
-            };
 
-            CoreConnection.Listen(consumer, (msg) =>
-            {
-                var str = Encoding.UTF8.GetString(msg.Content);
-                msg.Ask();
-                Trace.TraceInformation($"Listen: {str}");
-                if (QuestionAnswerDictionary.ContainsKey(str))
+                var exchangeName = Name + ".fanout";
+                var consumer = new ConsumerParam()
                 {
-                    Say(QuestionAnswerDictionary[str]);
-                }
-                lockEvent.Set();
-            });
+                    ExchangeParam = new ChannelExchangeParam()
+                    {
+                        Name = exchangeName,
+                        Type = ExchangeTypes.EXCHANGETYPE_FANOUT,
+                        Durable = true
+                    },
+                    QueueParam = new ChannelQueueParam()
+                    {
+                        Name = exchangeName + "." + appId,
+                    }
+                };
 
-            if(string.IsNullOrEmpty(SayMessage) && QuestionAnswerDictionary.ContainsKey(SayMessage))
+                CoreConnection.Listen(consumer, (msg) =>
+                {
+                    var str = Encoding.UTF8.GetString(msg.Content);
+
+                    try
+                    {
+                        msg.Ask();
+                    }catch(Exception ex)
+                    {
+
+                    }
+                    
+
+                    Trace.TraceInformation($"Listen: {str}");
+                    if (QuestionAnswerDictionary.ContainsKey(str))
+                    {
+                        Say(QuestionAnswerDictionary[str]);
+                    }
+                    lockEvent.Set();
+                });
+
+                if (string.IsNullOrEmpty(SayMessage) && QuestionAnswerDictionary.ContainsKey(SayMessage))
+                {
+                    Say(SayMessage);
+                }
+            }
+            catch(Exception ex)
             {
-                Say(SayMessage);
+
             }
 
             
