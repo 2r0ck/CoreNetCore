@@ -1,4 +1,5 @@
-﻿using CoreNetCore.MQ;
+﻿using CoreNetCore.Configuration;
+using CoreNetCore.MQ;
 using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,18 +8,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 
 namespace CoreNetCore
 {
     public class CoreHostBuilder : IHostBuilder
     {
-        public const string DEFAULT_UUID_FILE_NAME = "selfUUID.txt";
-        public const string CONFIG_KEY_UUID_FILE_NAME = "UUID_FILE_NAME";
-
-        public const string ENVRIOMENT_CONFIG_FILE_NAMES = "CONFIG_FILE_NAME";
-        public const string ENVRIOMENT_CONFIG_APP_PREFIX = "GJ_APP_";
         public const string ENVRIOMENT_ENVIRONMENTNAME = "ASPNETCORE_ENVIRONMENT";
 
         private List<Action<IConfigurationBuilder>> _configureHostConfigActions = new List<Action<IConfigurationBuilder>>();
@@ -63,7 +58,6 @@ namespace CoreNetCore
 
         public IDictionary<object, object> Properties { get; }
 
-
         public void RunPlatformService(string[] args)
         {
             if (!_coreHostBuilt)
@@ -72,7 +66,7 @@ namespace CoreNetCore
             }
 
             var p_service = _appServices.GetService<IPlatformService>();
-            if(p_service == null)
+            if (p_service == null)
             {
                 throw new CoreException("No service implementing IPlatformService..");
             }
@@ -139,7 +133,6 @@ namespace CoreNetCore
             };
         }
 
-
         private void BuildAppConfiguration()
         {
             var configBuilder = new ConfigurationBuilder();
@@ -148,39 +141,11 @@ namespace CoreNetCore
             {
                 buildAction(_hostBuilderContext, configBuilder);
             }
-            SetPlatformDefaultConfiguration(configBuilder, _hostingEnvironment.EnvironmentName);
+            //set default configuration
+            configBuilder.AddConfiguration(new ConfigurationFactory(_hostingEnvironment).GetDefault());
+
             _appConfiguration = configBuilder.Build();
             _hostBuilderContext.Configuration = _appConfiguration;
-        }
-
-        private void SetPlatformDefaultConfiguration(IConfigurationBuilder config, string environmentName)
-        {
-            config.SetBasePath(Directory.GetCurrentDirectory());
-
-            var fileNamesStr = Environment.GetEnvironmentVariable(Core.ENVRIOMENT_CONFIG_FILE_NAMES);
-            if (string.IsNullOrEmpty(fileNamesStr))
-            {
-                fileNamesStr = $"appsettings.json,appsettings.{environmentName}.json";
-            }
-
-            var cfgFiles = fileNamesStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var file in cfgFiles)
-            {
-                if (".json".Equals(Path.GetExtension(file)))
-                {
-                    config.AddJsonFile(file, true, true);
-                    Trace.TraceInformation($"Load config file: {file}");
-                }
-
-                if (".xml".Equals(Path.GetExtension(file)) || ".config".Equals(Path.GetExtension(file)))
-                {
-                    config.AddXmlFile(file, true, true);
-                    Trace.TraceInformation($"Load config file: {file}");
-                }
-            }
-
-            config.AddEnvironmentVariables(prefix: Core.ENVRIOMENT_CONFIG_APP_PREFIX);
         }
 
         private void CreateServiceProvider()
@@ -188,7 +153,7 @@ namespace CoreNetCore
             var services = new ServiceCollection();
             services.AddSingleton(_hostingEnvironment);
             services.AddSingleton(_hostBuilderContext);
-            services.AddSingleton(_appConfiguration);  
+            services.AddSingleton(_appConfiguration);
             services.AddOptions();
             services.AddLogging();
 
@@ -206,7 +171,9 @@ namespace CoreNetCore
             }
         }
 
+#pragma warning disable RECS0154 // Parameter is never used
         private void ConfigureCoreServices(HostBuilderContext hostBuilderContext, ServiceCollection services)
+#pragma warning restore RECS0154 // Parameter is never used
         {
             services.AddScoped<IAppId, AppId>();
         }

@@ -9,6 +9,9 @@ namespace CoreNetCore.MQ
 {
     public class AppId : IAppId
     {
+        public const string DEFAULT_UUID_FILE_NAME = "selfUUID.txt";
+        public const string CONFIG_KEY_UUID_FILE_NAME = "UUID_FILE_NAME";
+
         private string _currentUID;
 
         private IConfiguration configuration;
@@ -36,11 +39,11 @@ namespace CoreNetCore.MQ
         private string GetUID()
         {
             var uid = string.Empty;
-            var filename = configuration.GetStrValue(Core.CONFIG_KEY_UUID_FILE_NAME);
+            var filename = configuration.GetStrValue(AppId.CONFIG_KEY_UUID_FILE_NAME);
 
             if (string.IsNullOrEmpty(filename))
             {
-                filename = Core.DEFAULT_UUID_FILE_NAME;
+                filename = AppId.DEFAULT_UUID_FILE_NAME;
             }
 
             if (File.Exists(filename))

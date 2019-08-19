@@ -13,31 +13,49 @@ namespace CoreNetCoreParallelTest.MQ
     {
         [TestMethod]
         public void RunInstance1()
-        {
-            var c = new Core();
-            c.Init((sc) => { return sc.AddScoped<IPlatformService, Service1>(); }, "config1.json");
-            var resolver = c.ServiceProvider;
-            var service = resolver.GetService<IPlatformService>();
-            service.Run(null);
+        { 
+            RunService<Service2>("config1.json");
         }
 
         [TestMethod]
         public void RunInstance2()
         {
-            var c = new Core();
-            c.Init((sc) => { return sc.AddScoped<IPlatformService, Service2>(); }, "config2.json");
-            var resolver = c.ServiceProvider;
-            var service = resolver.GetService<IPlatformService>();
-            service.Run(null);
+            RunService<Service2>("config2.json");
         }
 
+
+        private void RunService<T>(string cfg) where T: class,IPlatformService
+        {
+            var hostBuilder = new CoreHostBuilder();
+
+            var host = hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile(cfg, true, true))
+                       .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, T>())
+                       .Build();
+
+            hostBuilder.RunPlatformService(null);
+        }
+
+
         [TestMethod]
+        [DoNotParallelize]
         public void RunInstance3()
         {
             var hostBuilder = new CoreHostBuilder();
 
-            hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile("config1.json", true, true))
+            var host = hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile("config1.json", true, true))
                        .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
+                       .Build();
+
+            hostBuilder.RunPlatformService(null);
+        }
+
+        [TestMethod]
+        [DoNotParallelize]
+        public void RunInstance4()
+        {
+            var hostBuilder = new CoreHostBuilder();
+
+            hostBuilder.ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
                        .Build();
 
             hostBuilder.RunPlatformService(null);

@@ -5,15 +5,17 @@ using Microsoft.Extensions.Configuration;
 
 namespace CoreNetCoreTest.TestClasses
 {
-    public class TestService2 : BaseService
+    public class TestService2 : IPlatformService
     {
-        public TestService2(IAppId appId, IConfiguration configuration) : base(appId, configuration)
+        public IConfiguration Configuration { get; }
+
+        public TestService2( IConfiguration configuration)  
         {
-         
+            Configuration = configuration;
         }     
         
 
-        public override void Run(string[] args)
+        public   void Run(string[] args)
         {
             Trace.WriteLine($"ServiceIsRunning. Test config key = {Configuration["defaultConfigKey"]}");
         }
