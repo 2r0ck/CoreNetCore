@@ -176,6 +176,7 @@ namespace CoreNetCore
 #pragma warning restore RECS0154 // Parameter is never used
         {
             services.AddScoped<IAppId, AppId>();
+            services.AddScoped<ICoreConnection, Connection>();
         }
 
         public IHostBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> configureDelegate)

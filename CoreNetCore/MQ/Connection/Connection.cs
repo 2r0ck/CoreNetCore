@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace CoreNetCore.MQ
 {
-    public class Connection : IDisposable
+    public class Connection : IDisposable, ICoreConnection
     {
         public bool IsConnected { get; private set; }
         public IAppId AppId { get; }
@@ -17,6 +17,7 @@ namespace CoreNetCore.MQ
         public event Action<string> Disconnected;
 
         public event Action<string> Connected;
+
         public IModel Channel => channel;
 
         #region config
@@ -88,6 +89,7 @@ namespace CoreNetCore.MQ
         /// </summary>
         public void Start()
         {
+            Trace.TraceInformation("MQ Started..");
             Connect(1);
         }
 
@@ -176,23 +178,26 @@ namespace CoreNetCore.MQ
                 {
                     throw new CoreException("QueueParam not declared");
                 }
-                //Queue declare
-                Trace.TraceInformation($"Declare queue [{cparam.QueueParam.Name}]. Options: {cparam.QueueParam.ToJson()}");
+               
                 channel.QueueDeclare(cparam.QueueParam.Name,
                     cparam.QueueParam.Durable,
                     cparam.QueueParam.Exclusive,
                     cparam.QueueParam.AutoDelete,
                     cparam.QueueParam.Arguments);
-
+                //Queue declare
+                Trace.TraceInformation($"Declare queue [{cparam.QueueParam.Name}]. Options: {cparam.QueueParam.ToJson()}");
+               
                 if (cparam.ExchangeParam != null)
-                {
-                    //Exchange declare
+                {                 
                     channel.ExchangeDeclare(cparam.ExchangeParam.Name,
-                        cparam.ExchangeParam.Type,
-                        cparam.ExchangeParam.Durable,
-                        cparam.ExchangeParam.AutoDelete,
-                        cparam.ExchangeParam.Arguments);
+                                           cparam.ExchangeParam.Type ?? ExchangeTypes.EXCHANGETYPE_DIRECT,
+                                           cparam.ExchangeParam.Durable,
+                                           cparam.ExchangeParam.AutoDelete,
+                                           cparam.ExchangeParam.Arguments);
+                 
+                    //Exchange declare                   
                     Trace.TraceInformation($"Bind queue [{cparam.QueueParam.Name}] to exchange [{cparam.ExchangeParam.Name}({cparam.ExchangeParam.Type})]. AppId=[{AppId.CurrentUID}] ");
+
                     //Bind queue and exchange
                     channel.QueueBind(cparam.QueueParam.Name, cparam.ExchangeParam.Name, AppId.CurrentUID);
                 }
@@ -244,7 +249,7 @@ namespace CoreNetCore.MQ
         /// <param name="pparam">Параметры сообщения</param>
         /// <param name="content">Сообщение</param>
         /// <param name="customProperties">Дополнительные параметры сообщения. Пример: Channel.CreateBasicProperties();</param>
-        public void Publish(ProducerParam pparam, byte[] content,IBasicProperties customProperties)
+        public void Publish(ProducerParam pparam, byte[] content, IBasicProperties customProperties)
         {
             try
             {
@@ -261,16 +266,16 @@ namespace CoreNetCore.MQ
                     routingKey: pparam?.RoutingKey,
                     basicProperties: customProperties,
                     body: content);
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 throw new CoreException(ex);
             }
         }
 
-
         private void Connection_ConnectionShutdown(object sender, ShutdownEventArgs e)
         {
-            Trace.TraceWarning("MQ Disconnected. MQ Starting..");
+            Trace.TraceWarning($"MQ Disconnected. ReplyCode = {e.ReplyCode}; ReplyText: {e.ReplyText}");
             Disconnected?.Invoke(AppId.CurrentUID);
             Start();
         }
@@ -281,14 +286,22 @@ namespace CoreNetCore.MQ
             {
                 if (channel != null)
                 {
-                    Trace.TraceInformation("MQ Channel closing..");
+                    Trace.TraceInformation($"MQ Channel closing. [{AppId.CurrentUID}]");
                     channel.Close();
                     channel.Dispose();
-                }
+                }                
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("Core connection dispose exception:");
+                Trace.TraceError(ex.ToString());
+            }
 
+            try
+            {                 
                 if (connection != null)
                 {
-                    Trace.TraceInformation("MQ Connection closing..");
+                    Trace.TraceInformation($"MQ Connection closing..[{AppId.CurrentUID}]");
                     connection.ConnectionShutdown -= Connection_ConnectionShutdown;
                     connection.Close();
                     connection.Dispose();

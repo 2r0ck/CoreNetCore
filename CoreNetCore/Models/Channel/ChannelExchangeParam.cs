@@ -15,7 +15,7 @@ namespace CoreNetCore.Models
         public string Name { get; set; }
 
         /// <summary>
-        /// Тип обмена (значения ChannelParam.EXCHANGETYPE_*)
+        /// Тип обмена (значения ExchangeTypes.EXCHANGETYPE_*)
         /// </summary>
         public string Type { get; set; }
 

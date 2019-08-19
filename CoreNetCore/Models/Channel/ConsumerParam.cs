@@ -10,26 +10,7 @@ namespace CoreNetCore.Models
      *  ИНФО: https://www.rabbitmq.com/tutorials/amqp-concepts.html
     */
     public class ConsumerParam
-    {
-        /// <summary>
-        /// Тип прямого обмена
-        /// </summary>
-        public const string EXCHANGETYPE_DIRECT = "Direct";
-
-        /// <summary>
-        /// Тип обмена Fanout направляет сообщения во все связанные очереди без разбора.
-        /// </summary>
-        public const string EXCHANGETYPE_FANOUT = "Fanout";
-
-        /// <summary>
-        /// Тип обмена Тема направляет сообщения в очереди, ключ маршрутизации которых совпадает со всеми или частью ключа маршрутизации. 
-        /// </summary>
-        public const string EXCHANGETYPE_TOPIC = "Topic";
-
-        /// <summary>
-        /// Тип обмена заголовками направляет сообщения на основе сопоставления заголовков сообщений с ожидаемыми заголовками, указанными в очереди привязки.
-        /// </summary>
-        public const string EXCHANGETYPE_HEADERS = "Headers";
+    {     
 
         /// <summary>
         /// Настройки для создания обмена. 
