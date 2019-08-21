@@ -7,5 +7,7 @@ namespace CoreNetCore.MQ
     {
         void AddCheck(Func<bool> check);
         Task StartAsync();
+
+        void Stop();
     }
 }

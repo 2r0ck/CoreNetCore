@@ -37,6 +37,7 @@ namespace CoreNetCore.Utils
             await Task.Run(() =>
             {
                 var listener = new HttpListener();
+                listener.IgnoreWriteExceptions = true;
                 listener.Prefixes.Add($"http://*:{Port}/");
                 listener.Start();                
                 start?.Invoke();

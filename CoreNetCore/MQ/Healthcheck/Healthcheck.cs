@@ -9,6 +9,8 @@ namespace CoreNetCore.MQ
 {
     public class Healthcheck : IHealthcheck
     {
+        private HttpLocalWorker http;
+
         private IList<Func<bool>> checks { get; }
         private IConfiguration Configuration { get; }
 
@@ -16,12 +18,13 @@ namespace CoreNetCore.MQ
         {
             checks = new List<Func<bool>>();
             Configuration = configuration;
+
         }
 
         public async Task StartAsync()
         {
             var port = Configuration.GetIntValue("mq.healthcheckPort") ?? 8048;
-            HttpLocalWorker http = new HttpLocalWorker(port);
+            http = new HttpLocalWorker(port);
             http.AddGet("/healthcheck", () => Validate().ToString());
 
             await http.StartAsync(
@@ -42,6 +45,11 @@ namespace CoreNetCore.MQ
                 }
             }
             return true;
+        }
+
+        public void Stop()
+        {
+            http?.StopAll();
         }
     }
 }
