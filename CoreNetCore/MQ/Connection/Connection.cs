@@ -212,6 +212,7 @@ namespace CoreNetCore.MQ
                 {
                     if (callback != null)
                     {
+                        //TODO:  Ask Nask with try-catch?
                         var msg = new MessageReceiveEventArgs(ea.Body,
                             () => channel.BasicAck(ea.DeliveryTag, multiple: false),
                             (autoRepit) => channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit));

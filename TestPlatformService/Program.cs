@@ -1,38 +1,53 @@
 ﻿using CoreNetCore;
-using Microsoft.Extensions.Configuration;
+using CoreNetCore.MQ;
+using CoreNetCore.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestPlatformService
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
-        {
 
+        private static void Main(string[] args)
+        {
             Stream myFile = File.Create("TestPlatformServiceLog.txt");
 
             TextWriterTraceListener myTextListener = new
-               TextWriterTraceListener(myFile);
+               CustomTrace(myFile);
             Trace.Listeners.Add(myTextListener);
-            Trace.AutoFlush = true;
+            //myTextListener.TraceOutputOptions = TraceOptions.DateTime;
 
+            Trace.AutoFlush = true;
 
             var hostBuilder = new CoreHostBuilder();
 
             var host = hostBuilder
-                       .ConfigureServices((builderContext, services) => {
+                       .ConfigureServices((builderContext, services) =>
+                       {
                            services.AddScoped<IPlatformService, AnswerService1>();
-
                        }
                        )
                        .Build();
 
-            hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
+            //hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
 
-            
+            var hel = host.Services.GetService<IHealthcheck>();
+            hel.StartAsync();
+
+            Console.ReadLine();
+
+            hel.AddCheck(() => false);
+            Console.WriteLine("Press key to exit..");
+            Console.ReadLine();
+
+
         }
+ 
     }
 }

@@ -1,7 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CoreNetCore.Utils
 {
@@ -17,18 +14,34 @@ namespace CoreNetCore.Utils
             return value;
         }
 
-        public static string  ToJson<T>(this T obj) where T:class
+        public static int? GetIntValue(this IConfiguration config, string key, bool assert = false)
+        {
+            var value = GetStrValue(config, key, assert);
+            int res = 0;
+
+            if (int.TryParse(value, out res))
+            {
+                return res;
+            }
+
+            if (assert)
+            {
+                throw new CoreException($"Config key parse error [${key}]");
+            }
+            return null;
+        }
+
+        public static string ToJson<T>(this T obj) where T : class
         {
             try
             {
                 if (obj == null) return string.Empty;
-                return  Newtonsoft.Json.JsonConvert.SerializeObject(obj);
+                return Newtonsoft.Json.JsonConvert.SerializeObject(obj);
             }
             catch
             {
                 return "[Object to Json serialize error]";
             }
         }
-
     }
 }

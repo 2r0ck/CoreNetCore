@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting.Internal;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Extensions.Logging;
 
 namespace CoreNetCore
 {
@@ -85,8 +86,7 @@ namespace CoreNetCore
             CreateHostingEnvironment();
             CreateHostBuilderContext();
             BuildAppConfiguration();
-            CreateServiceProvider();
-
+            CreateServiceProvider();       
             return new CoreHost(_appServices);
         }
 
@@ -156,6 +156,8 @@ namespace CoreNetCore
             services.AddSingleton(_appConfiguration);
             services.AddOptions();
             services.AddLogging();
+            //services.AddHttpClient();
+         
 
             ConfigureCoreServices(_hostBuilderContext, services);
 
@@ -177,6 +179,7 @@ namespace CoreNetCore
         {
             services.AddScoped<IAppId, AppId>();
             services.AddScoped<ICoreConnection, Connection>();
+            services.AddScoped<IHealthcheck, Healthcheck>();
         }
 
         public IHostBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> configureDelegate)

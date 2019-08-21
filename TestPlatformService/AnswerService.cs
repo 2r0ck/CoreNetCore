@@ -75,10 +75,7 @@ namespace TestPlatformService
         }
 
         private void CoreConnection_Connected(string appId)
-        {
-            try
-            {
-
+        {            
                 var exchangeName = Name + ".fanout";
                 var consumer = new ConsumerParam()
                 {
@@ -119,12 +116,6 @@ namespace TestPlatformService
                 {
                     Say(SayMessage);
                 }
-            }
-            catch(Exception ex)
-            {
-
-            }
-
             
         }
 
