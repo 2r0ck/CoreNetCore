@@ -95,13 +95,9 @@ namespace TestPlatformService
                 {
                     var str = Encoding.UTF8.GetString(msg.Content);
 
-                    try
-                    {
+                    
                         msg.Ask();
-                    }catch(Exception ex)
-                    {
-
-                    }
+                     
                     
 
                     Trace.TraceInformation($"Listen: {str}");

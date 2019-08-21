@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
 {
@@ -17,7 +18,7 @@ namespace CoreNetCore.MQ
             Configuration = configuration;
         }
 
-        public async void StartAsync()
+        public async Task StartAsync()
         {
             var port = Configuration.GetIntValue("mq.healthcheckPort") ?? 8048;
             HttpLocalWorker http = new HttpLocalWorker(port);

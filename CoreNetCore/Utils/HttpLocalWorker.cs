@@ -46,7 +46,7 @@ namespace CoreNetCore.Utils
                     var contextAsyncResult = listener.BeginGetContext(
                             (IAsyncResult asyncResult) =>
                             {
-                                if (listener.IsListening)
+                                if (listener!=null && listener.IsListening)
                                 {
                                     var context = listener.EndGetContext(asyncResult);
 
