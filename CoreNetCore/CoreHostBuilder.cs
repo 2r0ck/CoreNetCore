@@ -69,7 +69,7 @@ namespace CoreNetCore
             var p_service = _appServices.GetService<IPlatformService>();
             if (p_service == null)
             {
-                throw new CoreException("No service implementing IPlatformService..");
+                throw new CoreException("Not found implementing IPlatformService..");
             }
             p_service.Run(args);
         }
@@ -156,8 +156,7 @@ namespace CoreNetCore
             services.AddSingleton(_appConfiguration);
             services.AddOptions();
             services.AddLogging();
-            //services.AddHttpClient();
-         
+            services.AddMemoryCache();         
 
             ConfigureCoreServices(_hostBuilderContext, services);
 

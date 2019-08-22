@@ -1,10 +1,13 @@
 ﻿using CoreNetCore;
 using CoreNetCore.Configuration;
+using CoreNetCore.Models;
 using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace CoreNetCoreTest.Utils
@@ -12,6 +15,8 @@ namespace CoreNetCoreTest.Utils
     [TestClass]
     public class ConfigTest
     {
+        public object Traceitem { get; private set; }
+
         [TestMethod]
         public void DefaultConfigFile_Test()
         {
@@ -88,5 +93,59 @@ namespace CoreNetCoreTest.Utils
             //rewrite
             Assert.AreEqual(factory[testJSONAndEnvriomentKey], testEnvriomentValue);
         }
+
+        [TestMethod]
+        public void GetSectionTest()
+        {
+            CfgStarterSection cfg_starter = new CfgStarterSection();
+            var hostBuilder = new CoreHostBuilder();
+            var host = hostBuilder.Build();
+            var configuration = host.Services.GetService<IConfiguration>();
+            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
+
+            Assert.IsNotNull(cfg_starter?._this?.servicename);
+        }
+
+        [TestMethod]
+        public void ValidateSectionTest()
+        {
+            CfgStarterSection cfg_starter = new CfgStarterSection();
+            var hostBuilder = new CoreHostBuilder();
+            var host = hostBuilder.Build();
+            var configuration = host.Services.GetService<IConfiguration>();
+            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
+            Assert.IsTrue(cfg_starter.Validate());
+        }
+
+
+
+        [TestMethod]
+        public void ValidateSectionTest2()
+        {
+            CfgStarterSection cfg_starter = new CfgStarterSection();
+            var hostBuilder = new CoreHostBuilder();
+            var host = hostBuilder.Build();
+            var configuration = host.Services.GetService<IConfiguration>();
+            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
+            Assert.IsTrue(cfg_starter.Validate());
+
+            cfg_starter._this.servicename = null;
+            Assert.IsFalse(cfg_starter.Validate());
+
+            Assert.ThrowsException<CoreNetCore.Utils.CoreException>(() => { cfg_starter.ValidateAndTrace("starter"); });
+            
+        }
+
+        [TestMethod]
+        public void ConvertTest()
+        {
+
+            var t = JsonConvert.DeserializeObject<ResolverEntry>("");
+
+            Assert.IsNull(t);
+        }
+
+
+
     }
 }

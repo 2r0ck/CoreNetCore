@@ -40,11 +40,12 @@ namespace CoreNetCore.MQ
 
         #endregion disposed_objects
 
-        public Connection(IAppId appId, IConfiguration configuration)
+        public Connection(IAppId appId, IConfiguration configuration, IHealthcheck healthcheck)
         {
             IsConnected = false;
             ReadConfig(configuration);
             AppId = appId;
+            healthcheck.AddCheck(() => IsConnected);
         }
 
         private void ReadConfig(IConfiguration configuration)

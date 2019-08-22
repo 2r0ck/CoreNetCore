@@ -29,8 +29,7 @@ namespace CoreNetCore.MQ
 
             await http.StartAsync(
                 () => Trace.TraceInformation($"Healtcheck started. Port: {port}"),
-                () => Trace.TraceInformation($"Healtcheck stoped.")
-                );
+                () => Trace.TraceInformation($"Healtcheck stoped."));
         }
 
         public void AddCheck(Func<bool> check) => checks.Add(check);

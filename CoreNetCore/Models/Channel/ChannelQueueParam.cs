@@ -33,7 +33,7 @@ namespace CoreNetCore.Models
 
         public ChannelQueueParam()
         {
-
+            //TODO: expires param ?
         }
 
         public ChannelQueueParam(string name = "", bool durable = false,bool exclusive = true,bool autoDelete=  true, IDictionary<string,object> arguments=null)

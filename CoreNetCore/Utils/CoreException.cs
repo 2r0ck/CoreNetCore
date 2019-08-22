@@ -6,7 +6,7 @@ using System.Text;
 namespace CoreNetCore.Utils
 {
     [Serializable]
-    class CoreException :Exception
+     public class CoreException :Exception
     {
         public CoreException(string message) :base(message)
         {
