@@ -25,7 +25,7 @@ namespace CoreNetCoreParallelTest.MQ
             var host = hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile("config1.json", true, true))
                        .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
                        .Build();
-            hostBuilder.RunPlatformService(null);
+            host.GetService<IPlatformService>().Run(null);
             Trace.Flush();
         }
 
@@ -35,10 +35,10 @@ namespace CoreNetCoreParallelTest.MQ
         {
             var hostBuilder = new CoreHostBuilder();
 
-            hostBuilder.ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
+            var host=hostBuilder.ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
                        .Build();
 
-            hostBuilder.RunPlatformService(null);
+            host.GetService<IPlatformService>().Run(null);
         }
     }
 }

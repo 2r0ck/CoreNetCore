@@ -91,10 +91,12 @@ namespace CoreNetCoreParallelTest.TestServices
                     {
                         Name = exchangeName,
                         Type = ExchangeTypes.EXCHANGETYPE_DIRECT,
+                        
                     },
                     QueueParam = new ChannelQueueParam()
                     {
                         Name = exchangeName + "." + appId,
+                        AutoDelete = true
                     }
                 };
 

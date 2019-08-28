@@ -58,7 +58,7 @@ namespace CoreNetCoreParallelTest.MQ
                        )
                        .Build();
 
-            hostBuilder.RunPlatformService(args);
+            host.GetService<IPlatformService>().Run(args);
         }
     }
 }

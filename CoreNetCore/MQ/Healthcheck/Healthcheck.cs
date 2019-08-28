@@ -32,7 +32,12 @@ namespace CoreNetCore.MQ
                 () => Trace.TraceInformation($"Healtcheck stoped."));
         }
 
-        public void AddCheck(Func<bool> check) => checks.Add(check);
+        void IHealthcheck.AddCheck(Func<bool> check)
+        {
+            if (check == null)
+                throw new CoreException("Healthcheck handler is null");
+            checks.Add(check);
+        }
 
         private bool Validate()
         {

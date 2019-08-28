@@ -29,7 +29,7 @@ namespace CoreNetCoreParallelTest.MQ
                        .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, T>())
                        .Build();
 
-            hostBuilder.RunPlatformService(null);
+           host.GetService<IPlatformService>().Run(null);           
         }
     }
 }

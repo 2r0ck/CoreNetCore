@@ -72,7 +72,7 @@ namespace CoreNetCore.Utils
         public void StopAll()
         {
             shouldExit = true;
-            shouldExitWaitHandle.Set();
+            shouldExitWaitHandle.Set();            
         }
 
         public void AddGet(string url, Func<string> func)

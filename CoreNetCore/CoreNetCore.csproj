@@ -23,4 +23,8 @@
     <PackageReference Include="RabbitMQ.Client" Version="5.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\Cache\" />
+  </ItemGroup>
+
 </Project>

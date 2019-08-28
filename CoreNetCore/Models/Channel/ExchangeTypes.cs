@@ -22,6 +22,19 @@
         /// </summary>
         public const string EXCHANGETYPE_HEADERS = "headers";
 
+        public static string Get(string str)
+        {
+            switch (str.Trim().ToLowerInvariant())
+            {
+                case EXCHANGETYPE_DIRECT: return EXCHANGETYPE_DIRECT;
+                case EXCHANGETYPE_FANOUT: return EXCHANGETYPE_FANOUT;
+                case EXCHANGETYPE_TOPIC: return EXCHANGETYPE_TOPIC;
+                case EXCHANGETYPE_HEADERS: return EXCHANGETYPE_HEADERS;
+                default:
+                    throw new CoreException($"Unknow exchange type {str}");
+            }
+        }
+
         private ExchangeTypes()
         {
         }

@@ -50,12 +50,12 @@ namespace CoreNetCoreTest.MQ
 
             int a = 0;
 
-            Func<bool> heandler = () =>
+            Func<bool> handler = () =>
             {
                 return a < 10;
             };
 
-            hs.AddCheck(heandler);
+            hs.AddCheck(handler);
 
             CheckAnwer("Http://localhost:8048/healthcheck", "True");
 

@@ -59,21 +59,6 @@ namespace CoreNetCore
 
         public IDictionary<object, object> Properties { get; }
 
-        public void RunPlatformService(string[] args)
-        {
-            if (!_coreHostBuilt)
-            {
-                throw new CoreException("CoreHost not build.");
-            }
-
-            var p_service = _appServices.GetService<IPlatformService>();
-            if (p_service == null)
-            {
-                throw new CoreException("Not found implementing IPlatformService..");
-            }
-            p_service.Run(args);
-        }
-
         public IHost Build()
         {
             if (_coreHostBuilt)
@@ -179,6 +164,8 @@ namespace CoreNetCore
             services.AddScoped<IAppId, AppId>();
             services.AddScoped<ICoreConnection, Connection>();
             services.AddScoped<IHealthcheck, Healthcheck>();
+            services.AddScoped<ICoreDispatcher, CoreDispatcher>();
+            services.AddTransient<IMessageEntry, MessageEntry>();
         }
 
         public IHostBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> configureDelegate)

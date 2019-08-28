@@ -132,8 +132,7 @@ namespace CoreNetCoreTest.Utils
             cfg_starter._this.servicename = null;
             Assert.IsFalse(cfg_starter.Validate());
 
-            Assert.ThrowsException<CoreNetCore.Utils.CoreException>(() => { cfg_starter.ValidateAndTrace("starter"); });
-            
+            Assert.ThrowsException<CoreException>(() => { cfg_starter.ValidateAndTrace("starter"); });            
         }
 
         [TestMethod]

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RabbitMQ.Client.Events;
+using System;
 
 namespace CoreNetCore.Models
 {
@@ -7,10 +8,13 @@ namespace CoreNetCore.Models
 
     public class MessageReceiveEventArgs
     {
+
+        public  BasicDeliverEventArgs Info { get; }
+
         /// <summary>
         /// Содержание сообщения
         /// </summary>
-        public byte[] Content { get; }
+        public byte[] Content => Info?.Body;
 
         /// <summary>
         /// Сообщение об удачной обработке сообщения
@@ -21,6 +25,7 @@ namespace CoreNetCore.Models
         /// Сообщение об неудачной обработке сообщения. Принимает параметр, указывающий требуется ли повторно отправить сообщение
         /// </summary>
         public Action<bool> Nask { get; }
+     
 
         /// <summary>
         /// тип, содержащий информацию о полученном сообщении для подписчика
@@ -28,9 +33,9 @@ namespace CoreNetCore.Models
         /// <param name="data">Содержание сообщения</param>
         /// <param name="ask">Сообщение об удачной обработке сообщения</param>
         /// <param name="nask">Сообщение об неудачной обработке сообщения. Принимает параметр, указывающий требуется ли повторно отправить сообщение</param>
-        public MessageReceiveEventArgs(byte[] content, Action ask, Action<bool> nask)
+        public MessageReceiveEventArgs(BasicDeliverEventArgs eventArgs, Action ask, Action<bool> nask)
         {
-            Content = content;
+            Info = eventArgs;
             Ask = ask;
             Nask = nask;
         }

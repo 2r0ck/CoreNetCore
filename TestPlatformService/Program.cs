@@ -35,7 +35,14 @@ namespace TestPlatformService
             //           )
             //           .Build();
 
-            ////hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
+            //TODO
+            //host.DeclareRS();
+            //host.DeclareRQ();
+            //host.Create();
+            //host.StartAsync();
+
+
+            //hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
 
             //var hel = host.Services.GetService<IHealthcheck>();
             //hel.StartAsync();
@@ -47,15 +54,29 @@ namespace TestPlatformService
             //Console.ReadLine();
 
 
+            //var hostBuilder = new CoreHostBuilder();
+            //var host = hostBuilder.Build();
+
+            //var hs = host.Services.GetService<IHealthcheck>();
+            //hs.StartAsync();
+
+            //Console.WriteLine("Press key to exit..");
+            //Console.ReadLine();
+
+
+
+
+
             var hostBuilder = new CoreHostBuilder();
-            var host = hostBuilder.Build();
 
-            var hs = host.Services.GetService<IHealthcheck>();
-            hs.StartAsync();
-
-            Console.WriteLine("Press key to exit..");
-            Console.ReadLine();
-
+            var host = hostBuilder
+                       .ConfigureServices((builderContext, services) =>
+                       {
+                           services.AddScoped<IPlatformService, TestService>();
+                       }
+                       )
+                       .Build();
+            host.GetService<IPlatformService>().Run();
             Console.WriteLine("Press key to exit..");
             Console.ReadLine();
 
