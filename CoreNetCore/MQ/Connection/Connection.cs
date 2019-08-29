@@ -52,6 +52,7 @@ namespace CoreNetCore.MQ
         {
             maxRecoveryCount = 1;
             var warn = "Config key [{0}] not declared.";
+            //TODO: переделать на PrepareConfigService
             if (!int.TryParse(configuration.GetStrValue("mq:maxRecoveryCount"), out maxRecoveryCount))
             {
                 Trace.TraceWarning(string.Format(warn, "mq:maxRecoveryCount"));
@@ -171,7 +172,7 @@ namespace CoreNetCore.MQ
         /// <param name="cparam">Парамеры создания обмена, очереди и подписчика</param>
         /// <param name="callback">Функция обратного вызова при получении сообщения</param>
         /// <returns></returns>
-        public string Listen(ConsumerParam cparam, Action<MessageReceiveEventArgs> callback)
+        public string Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback)
         {
             try
             {
@@ -179,7 +180,7 @@ namespace CoreNetCore.MQ
                 {
                     throw new CoreException("QueueParam not declared");
                 }
-               
+
                 channel.QueueDeclare(cparam.QueueParam.Name,
                     cparam.QueueParam.Durable,
                     cparam.QueueParam.Exclusive,
@@ -187,16 +188,16 @@ namespace CoreNetCore.MQ
                     cparam.QueueParam.Arguments);
                 //Queue declare
                 Trace.TraceInformation($"Declare queue [{cparam.QueueParam.Name}]. Options: {cparam.QueueParam.ToJson()}");
-               
+
                 if (cparam.ExchangeParam != null)
-                {                 
+                {
                     channel.ExchangeDeclare(cparam.ExchangeParam.Name,
                                            cparam.ExchangeParam.Type ?? ExchangeTypes.EXCHANGETYPE_DIRECT,
                                            cparam.ExchangeParam.Durable,
                                            cparam.ExchangeParam.AutoDelete,
                                            cparam.ExchangeParam.Arguments);
-                 
-                    //Exchange declare                   
+
+                    //Exchange declare
                     Trace.TraceInformation($"Bind queue [{cparam.QueueParam.Name}] to exchange [{cparam.ExchangeParam.Name}({cparam.ExchangeParam.Type})]. AppId=[{AppId.CurrentUID}] ");
 
                     //Bind queue and exchange
@@ -214,7 +215,7 @@ namespace CoreNetCore.MQ
                     if (callback != null)
                     {
                         //TODO:  Ask Nask with try-catch?
-                        var msg = new MessageReceiveEventArgs(ea,
+                        var msg = new ReceivedMessageEventArgs(ea,
                             () => channel.BasicAck(ea.DeliveryTag, multiple: false),
                             (autoRepit) => channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit));
                         callback.Invoke(msg);
@@ -282,6 +283,12 @@ namespace CoreNetCore.MQ
             Start();
         }
 
+
+        public IBasicProperties CreateChannelProperties()
+        {
+            return channel.CreateBasicProperties();
+        }
+
         public void Dispose()
         {
             try
@@ -291,7 +298,7 @@ namespace CoreNetCore.MQ
                     Trace.TraceInformation($"MQ Channel closing. [{AppId.CurrentUID}]");
                     channel.Close();
                     channel.Dispose();
-                }                
+                }
             }
             catch (Exception ex)
             {
@@ -300,7 +307,7 @@ namespace CoreNetCore.MQ
             }
 
             try
-            {                 
+            {
                 if (connection != null)
                 {
                     Trace.TraceInformation($"MQ Connection closing..[{AppId.CurrentUID}]");

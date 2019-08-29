@@ -22,7 +22,7 @@
         /// </summary>
         public const string EXCHANGETYPE_HEADERS = "headers";
 
-        public static string Get(string str)
+        public static string Get(string str,bool assert =false)
         {
             switch (str.Trim().ToLowerInvariant())
             {
@@ -31,8 +31,15 @@
                 case EXCHANGETYPE_TOPIC: return EXCHANGETYPE_TOPIC;
                 case EXCHANGETYPE_HEADERS: return EXCHANGETYPE_HEADERS;
                 default:
-                    throw new CoreException($"Unknow exchange type {str}");
+                    {
+                        if (assert)
+                        {
+                            throw new CoreException($"Unknow exchange type {str}");
+                        }
+                        return null;
+                    }
             }
+
         }
 
         private ExchangeTypes()

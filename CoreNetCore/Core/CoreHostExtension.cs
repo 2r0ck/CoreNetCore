@@ -1,4 +1,5 @@
-﻿using CoreNetCore.MQ;
+﻿using CoreNetCore.Models;
+using CoreNetCore.MQ;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -24,7 +25,7 @@ namespace CoreNetCore
         }
 
 
-        public static bool DeclareResponseHandler(this IHost host, string actionName, Action<MessageEntry, Dictionary<object, object>> handler)
+        public static bool DeclareResponseHandler(this IHost host, string actionName, Action<MessageEntry, string> handler)
         {
             var dispatcher = host.GetService<ICoreDispatcher>();
             if (dispatcher == null)
@@ -45,14 +46,14 @@ namespace CoreNetCore
             healthck.AddCheck(healthcheckHandler);
         }
 
-        public static IMessageEntry CreateMessage(this IHost host)
+        public static MessageEntry CreateMessage(this IHost host, ReceivedMessageEventArgs receivedMessage =null)
         {
-            var message = host.GetService<IMessageEntry>();
-            if (message == null)
+            var dispatcher = host.GetService<ICoreDispatcher>();
+            if (dispatcher == null)
             {
-                throw new CoreException("MessageEntry not defined");
+                throw new CoreException("CoreDispatcher not defined");
             }
-            return message;
+            return new MessageEntry(dispatcher, receivedMessage);
         }
 
 

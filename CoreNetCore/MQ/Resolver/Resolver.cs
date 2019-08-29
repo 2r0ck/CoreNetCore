@@ -17,14 +17,14 @@ namespace CoreNetCore.MQ
 
         public bool Bind { get; private set; }
         private ICoreConnection Connection { get; }
-        private CfgStarterSection cfg_starter;
+        private CfgStarterSection cfg_starter = null; //TODO: from service!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         public ConcurrentDictionary<string, List<ResolverInvoker>> pending = new ConcurrentDictionary<string, List<ResolverInvoker>>();
 
         public Resolver(IMemoryCache memoryCache, ICoreConnection connection, IConfiguration configuration, IHealthcheck healthcheck)
         {
             Connection = connection;
-            ReadConfig(configuration);
+            
             Cache = memoryCache;
             Bind = false;
             healthcheck.AddCheck(() => Bind);
@@ -155,11 +155,6 @@ namespace CoreNetCore.MQ
         }
 
 
-        private void ReadConfig(IConfiguration configuration)
-        {
-            cfg_starter = new CfgStarterSection();
-            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
-            cfg_starter.ValidateAndTrace("starter");
-        }
+        
     }
 }

@@ -47,10 +47,7 @@ namespace CoreNetCore
         /// </summary>
         private IHostingEnvironment _hostingEnvironment;
 
-        /// <summary>
-        /// DI Resolver
-        /// </summary>
-        private IServiceProvider _appServices;
+       
 
         public CoreHostBuilder()
         {
@@ -71,8 +68,15 @@ namespace CoreNetCore
             CreateHostingEnvironment();
             CreateHostBuilderContext();
             BuildAppConfiguration();
-            CreateServiceProvider();       
-            return new CoreHost(_appServices);
+            
+            //Create DI Resolver
+            IServiceProvider appServices = CreateServiceProvider();
+
+            if (appServices == null)
+            {
+                throw new CoreException($"The BuildServiceProvider returned a null IServiceProvider.");
+            }
+            return new CoreHost(appServices);
         }
 
         private void BuildHostConfiguration()
@@ -133,7 +137,7 @@ namespace CoreNetCore
             _hostBuilderContext.Configuration = _appConfiguration;
         }
 
-        private void CreateServiceProvider()
+        private IServiceProvider CreateServiceProvider()
         {
             var services = new ServiceCollection();
             services.AddSingleton(_hostingEnvironment);
@@ -150,11 +154,7 @@ namespace CoreNetCore
                 configureServicesAction(_hostBuilderContext, services);
             }
 
-            _appServices = services.BuildServiceProvider();
-            if (_appServices == null)
-            {
-                throw new CoreException($"The BuildServiceProvider returned a null IServiceProvider.");
-            }
+            return services.BuildServiceProvider();           
         }
 
 #pragma warning disable RECS0154 // Parameter is never used
@@ -165,7 +165,8 @@ namespace CoreNetCore
             services.AddScoped<ICoreConnection, Connection>();
             services.AddScoped<IHealthcheck, Healthcheck>();
             services.AddScoped<ICoreDispatcher, CoreDispatcher>();
-            services.AddTransient<IMessageEntry, MessageEntry>();
+            services.AddScoped<IPrepareConfigService, PrepareConfigService>();
+            //services.AddTransient<IMessageEntry, MessageEntry>();
         }
 
         public IHostBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> configureDelegate)

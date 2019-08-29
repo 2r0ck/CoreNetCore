@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using System;
 
 namespace CoreNetCore.Utils
 {
@@ -31,16 +32,39 @@ namespace CoreNetCore.Utils
             return null;
         }
 
-        public static string ToJson<T>(this T obj) where T : class
+        public static string ToJson<T>(this T obj,bool assert=false) where T : class
         {
             try
             {
                 if (obj == null) return string.Empty;
                 return Newtonsoft.Json.JsonConvert.SerializeObject(obj);
             }
-            catch
+            catch (Exception ex)
             {
-                return "[Object to Json serialize error]";
+                var msg = "Object to Json serialize error";
+                if (assert)
+                {
+                    throw new CoreException(msg, ex);
+                }
+                return string.Empty;
+            }
+        }
+
+        public static T FromJson<T>(this string str, bool assert = false) where T : class
+        {
+            try
+            {
+                if (str == null) return null;
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(str);
+            }
+            catch (Exception ex)
+            {
+                var msg = "Object to Json serialize error";
+                if (assert)
+                {
+                    throw new CoreException(msg, ex);
+                }
+                return null;
             }
         }
     }

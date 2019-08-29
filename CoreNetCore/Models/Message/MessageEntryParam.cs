@@ -15,6 +15,8 @@ namespace CoreNetCore.Models
 
         public byte Priority { get; set; }
 
+        public string AppId { get; set; }
+
         public static MessageEntryParam GetDefault()
         {
             return new MessageEntryParam
