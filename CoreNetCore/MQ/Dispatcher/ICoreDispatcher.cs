@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CoreNetCore.Models;
+using System;
 using System.Collections.Generic;
 
 namespace CoreNetCore.MQ
@@ -13,6 +14,8 @@ namespace CoreNetCore.MQ
 
         bool DeclareResponseHandler(string actionName, Action<MessageEntry, string> handler);
 
+        bool DeclareResponseCallback(string messageId, Action<CallbackMessageEventArgs<object>> callback,int? timeout);
+
         string SelfServiceName { get; }
         /// <summary>
         /// connection for query, kind = direct
@@ -25,5 +28,7 @@ namespace CoreNetCore.MQ
         string QueueConnectionString { get; }
 
         string GetConnectionByExchangeType(string exchangeKind);
+
+        string Resolve(string service, string type);
     }
 }

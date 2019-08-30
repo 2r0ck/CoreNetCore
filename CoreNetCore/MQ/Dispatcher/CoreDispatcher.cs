@@ -15,7 +15,7 @@ namespace CoreNetCore.MQ
         ConcurrentDictionary<string, List<Action<MessageEntry, string>>> responceHandlers = new ConcurrentDictionary<string, List<Action<MessageEntry, string>>>();
 
         //CallbackMessageEventArgs
-        ConcurrentDictionary<string, List<Action<CallbackMessageEventArgs>>> responceCallbacks = new ConcurrentDictionary<string, List<Action<CallbackMessageEventArgs>>>();
+        ConcurrentDictionary<string, List<Action<CallbackMessageEventArgs<object>>>> responceCallbacks = new ConcurrentDictionary<string, List<Action<CallbackMessageEventArgs<object>>>>();
 
         public string SelfServiceName => $"{Config.Starter._this._namespace}:{Config.Starter._this.servicename}:{Config.Starter._this.majorversion}";
         public string ExchangeConnectionString { get; }
@@ -26,12 +26,14 @@ namespace CoreNetCore.MQ
 
         public string AppId { get; }
         public ICoreConnection Connection { get;}
+        public IResolver Resolver { get; }
 
-        public CoreDispatcher(IPrepareConfigService config, IAppId appId, ICoreConnection coreConnection)
+        public CoreDispatcher(IPrepareConfigService config, IAppId appId, ICoreConnection coreConnection, IResolver resolver)
         {
             Config = config;
             AppId = appId.CurrentUID;
             Connection = coreConnection;
+            Resolver = resolver;
         }
 
 
@@ -68,25 +70,31 @@ namespace CoreNetCore.MQ
             return responceHandlers.TryAdd(actionName, new List<Action<MessageEntry, string>> { handler });
         }
 
-        public bool DeclareResponseCallback(string messageId, Action<CallbackMessageEventArgs> callback)
+        //todo: timeout not implement
+        public bool DeclareResponseCallback(string messageId, Action<CallbackMessageEventArgs<object>> callback,int? timeout)
         {
             if (callback == null)
             {
                 throw new CoreException("Callback is null");
             }
             Trace.TraceInformation($"Declare response callback. MessageId={messageId}");
-            List<Action<CallbackMessageEventArgs>> handlers = null;
+            List<Action<CallbackMessageEventArgs<object>>> handlers = null;
             if (responceCallbacks.TryGetValue(messageId, out handlers))
             {
                 handlers.Add(callback);
                 return true;
             }
-            return responceCallbacks.TryAdd(messageId, new List<Action<CallbackMessageEventArgs>> { callback });
+            return responceCallbacks.TryAdd(messageId, new List<Action<CallbackMessageEventArgs<object>>> { callback });
         }
 
         public string GetConnectionByExchangeType(string exchangeKind)
         {
             return LinkTypes.GetLinkByExchangeType(exchangeKind) == LinkTypes.LINK_EXCHANGE ? ExchangeConnectionString : QueueConnectionString;
+        }
+
+        public string Resolve(string service, string type)
+        {
+            return Resolver.Resolve(service, type);
         }
 
       

@@ -9,7 +9,7 @@ namespace CoreNetCore.Models
     {
         public string TransactionId { get; set; }
 
-        public bool NeedRequestResolve { get; set; }
+        public bool? NeedRequestResolve { get; set; }
 
         public bool NeedResponseResolve { get; set; }
 
@@ -17,13 +17,6 @@ namespace CoreNetCore.Models
 
         public string AppId { get; set; }
 
-        public static MessageEntryParam GetDefault()
-        {
-            return new MessageEntryParam
-            {
-                NeedRequestResolve = true,
-                Priority = 0
-            };
-        }
+        public int? Timeout { get; set; }
     }
 }

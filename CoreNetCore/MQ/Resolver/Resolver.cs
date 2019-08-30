@@ -11,7 +11,7 @@ using System.Linq;
 
 namespace CoreNetCore.MQ
 {
-    public class Resolver
+    public class Resolver : IResolver
     {
         private IMemoryCache Cache { get; }
 
@@ -154,7 +154,12 @@ namespace CoreNetCore.MQ
             }
         }
 
+        public string Resolve(string service, string type) {
 
-        
+            return "";
+
+        }
+
+
     }
 }

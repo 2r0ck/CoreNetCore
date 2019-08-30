@@ -1,5 +1,6 @@
 ﻿using CoreNetCore.Models;
 using CoreNetCore.Utils;
+using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -60,32 +61,32 @@ namespace CoreNetCore.MQ
             }
         }
 
-        public Task RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, Action<CallbackMessageEventArgs> callback, MessageEntryParam parameters)
+        public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, Action<CallbackMessageEventArgs<object>> callback, MessageEntryParam parameters)
         {
             return RequestAsync(serviceName, exchangeType, queryName, queryData, null, null, callback, parameters);
         }
 
-        public Task RequestAsync (string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, object responseHandlerData, MessageEntryParam parameters) 
+        public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, object responseHandlerData, MessageEntryParam parameters)
         {
             var responseHandlerDataStr = responseHandlerData?.ToJson(true);
             return RequestAsync(serviceName, exchangeType, queryName, queryData, responceHandlerName, responseHandlerDataStr, null, parameters);
         }
 
-        public Task RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, string responseHandlerData, MessageEntryParam parameters)
+        public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, string responseHandlerData, MessageEntryParam parameters)
         {
             return RequestAsync(serviceName, exchangeType, queryName, queryData, responceHandlerName, responseHandlerData, null, parameters);
         }
 
-        private Task RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, string responseHandlerData, Action<CallbackMessageEventArgs> callback, MessageEntryParam parameters)
+        private Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, string responseHandlerData, Action<CallbackMessageEventArgs<object>> callback, MessageEntryParam parameters)
         {
             var responseResolve = parameters?.NeedResponseResolve ?? false;
 
             //TODO: подумать ExchangeTypes.EXCHANGETYPE_DIRECT для responceHandlers?
-            var responseKind = callback == null ?  ExchangeTypes.EXCHANGETYPE_FANOUT:ExchangeTypes.EXCHANGETYPE_DIRECT;
+            var responseKind = callback == null ? ExchangeTypes.EXCHANGETYPE_FANOUT : ExchangeTypes.EXCHANGETYPE_DIRECT;
 
             var replayTo = responseResolve ? Dispatcher.SelfServiceName : Dispatcher.GetConnectionByExchangeType(responseKind);
 
-            //записываем  текущее состояние запроса 
+            //записываем  текущее состояние запроса
             var currentViaElement = new ViaElement()
             {
                 replyTo = replayTo,
@@ -105,14 +106,13 @@ namespace CoreNetCore.MQ
             properties.ContentType = currentViaElement.queryHandlerName;
             properties.MessageId = currentViaElement.messageId;
             properties.ReplyTo = currentViaElement.replyTo;
-            properties.Priority = currentViaElement.priority == 0? (byte)1 : currentViaElement.priority;
+            properties.Priority = currentViaElement.priority == 0 ? (byte)1 : currentViaElement.priority;
             properties.Headers = new Dictionary<string, object>();
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA, this.via.ToJson());
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.DIRECTION, MessageBasicPropertiesHeaders.DIRECTION_VALUE_REQUEST);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND, responseKind);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND_TYPE, MessageBasicPropertiesHeaders.WORKKIND_TYPE_VALUE);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA_TYPE, MessageBasicPropertiesHeaders.VIA_TYPE_VALUE);
-
 
             var link = LinkTypes.GetLinkByExchangeType(exchangeType);
 
@@ -129,22 +129,29 @@ namespace CoreNetCore.MQ
                 {
                     throw new CoreException("Relation [Direct to Direct] - AppId must be initialized");
                 }
-
             }
 
             var exchangeName = exchangeType == ExchangeTypes.EXCHANGETYPE_FANOUT ? "" : serviceName;
 
-            return Push().ContinueWith((result)=> {
-                //тема с таймаутом
-                //если есть ошибки и есть колбек запускаем его с ошибками
-                //пробрасываем таск дальше
-                //....
-            
-            });
+            return Push(currentViaElement, parameters.NeedRequestResolve ?? true, link, serviceName, exchangeName, routingKey, exchangeType, queryData, properties)
+                .ContinueWith((result) =>
+                {
+                    if (callback != null)
+                    {
+                        if (result.Exception != null)
+                        {
+                            callback(new CallbackMessageEventArgs<object>(result.Exception));
+                        }
+                        else
+                        {
+                            Dispatcher.DeclareResponseCallback(currentViaElement.messageId, callback, parameters?.Timeout);
+                        }
+                    }
+                    return result.Result;
+                });
         }
 
-
-        public Task Push()
+        public Task<CallbackMessageEventArgs<ViaElement>> Push(ViaElement via, bool requestResolve, string link, string service, string exchangeName, string routingKey, string exchangeType, object queryData, IBasicProperties properties)
         {
             return null;
         }

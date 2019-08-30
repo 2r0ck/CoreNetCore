@@ -166,6 +166,7 @@ namespace CoreNetCore
             services.AddScoped<IHealthcheck, Healthcheck>();
             services.AddScoped<ICoreDispatcher, CoreDispatcher>();
             services.AddScoped<IPrepareConfigService, PrepareConfigService>();
+            services.AddScoped<IResolver, Resolver>();
             //services.AddTransient<IMessageEntry, MessageEntry>();
         }
 
