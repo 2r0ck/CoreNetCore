@@ -16,23 +16,7 @@ namespace CoreNetCore.Models
         public int? sub_version { get; set; }
         public bool self_link { get; set; }
 
-        public Dictionary<string, string> links { get; }
-
-        public CacheItem()
-        {
-            links = new Dictionary<string, string>();
-        }
-
-        public void AddLink(string key, string value)
-        {
-            if (links.ContainsKey(key))
-            {
-                links[key] = value;
-            }
-            else
-            {
-                links.Add(key, value);
-            }
-        }
+        public LinkEntry[] links { get; }      
+        
     }
 }

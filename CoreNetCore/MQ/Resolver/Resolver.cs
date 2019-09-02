@@ -8,27 +8,37 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
 {
     public class Resolver : IResolver
     {
         private IMemoryCache Cache { get; }
+        public const string SELF_LINK_SIGN = "self_link";
+
+        private ConcurrentDictionary<string, TaskCompletionSource<LinkEntry[]>> pending = new ConcurrentDictionary<string, TaskCompletionSource<LinkEntry[]>>();
 
         public bool Bind { get; private set; }
         private ICoreConnection Connection { get; }
-        private CfgStarterSection cfg_starter = null; //TODO: from service!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        private CfgStarterSection cfg_starter => Configuration?.Starter;
 
-        public ConcurrentDictionary<string, List<ResolverInvoker>> pending = new ConcurrentDictionary<string, List<ResolverInvoker>>();
+        public IPrepareConfigService Configuration { get; }
+        public string AppId { get; }
 
-        public Resolver(IMemoryCache memoryCache, ICoreConnection connection, IConfiguration configuration, IHealthcheck healthcheck)
+        // public ConcurrentDictionary<string, List<ResolverInvoker>> pending = new ConcurrentDictionary<string, List<ResolverInvoker>>();
+
+        public Resolver(IMemoryCache memoryCache, ICoreConnection connection, IPrepareConfigService configuration, IHealthcheck healthcheck, IAppId appId)
         {
+            Configuration = configuration;
+            AppId = appId.CurrentUID;
             Connection = connection;
-            
+
             Cache = memoryCache;
             Bind = false;
             healthcheck.AddCheck(() => Bind);
-
             connection.Connected += Connection_Connected;
         }
 
@@ -84,7 +94,7 @@ namespace CoreNetCore.MQ
                             {
                                 foreach (var item in element.link)
                                 {
-                                    cache_item.AddLink(item.type, item.name);
+                                    //     cache_item.AddLink(item.type, item.name);
                                 }
                             }
 
@@ -94,14 +104,14 @@ namespace CoreNetCore.MQ
                                 Cache.Set(key, cache_item, cacheOption);
                             }
                             //запускаем
-                            ExecutePendingElement(key, cache_item.links);
+                            // ExecutePendingElement(key, cache_item.links);
                         }
                         else
-                        {                            
-                            FailedPendingElement(key, element.error);
+                        {
+                            // FailedPendingElement(key, element.error);
                         }
 
-                        DeletePendingElement(key);                        
+                        //DeletePendingElement(key);
                     }
                 }
 
@@ -109,57 +119,165 @@ namespace CoreNetCore.MQ
             });
             Trace.TraceInformation("Resolver queue created");
             Bind = true;
-            
         }
 
-        private List<ResolverInvoker> DeletePendingElement(string key)
+        public async Task<string> Resolve(string service, string type)
         {
-            List<ResolverInvoker> invokers = null;
-            if (pending.TryRemove(key, out invokers))
+            var nsv = Regex.Split(service, @"/([A-Za-z0-9-\._]{1,100}?):([A-Za-z0-9:\.-_]{1,100}?):([0-9]{1,9}?)/");
+            if (nsv == null || nsv.Length < 3)
             {
-                return invokers;
+                throw new CoreException("Resolver: could not parse service name");
             }
-            return null;
+
+            //await caching query or pending
+            var links = await GetLinks(nsv[0], nsv[1], nsv[2], false);
+            //return query name by type kind
+            return links?.Where(x => x.type?.Equals(type, StringComparison.InvariantCultureIgnoreCase) ?? false).Select(x => x.name).FirstOrDefault();
         }
 
-        private void ExecutePendingElement(string key, Dictionary<string, string> links)
+        public Task<LinkEntry[]> GetLinks(string name_space, string service, string version, bool isSelf)
         {
-            List<ResolverInvoker> invokers = null;
-            if (pending.TryGetValue(key, out invokers))
+            var serviceKey = GetKey(name_space, service, version);
+            var cacheEntry = isSelf ? null : Cache.Get<CacheItem>(serviceKey);
+            if (cacheEntry == null)
             {
-                foreach (var inv in invokers)
+                TaskCompletionSource<LinkEntry[]> context;
+                if (!GetOrGeneratePendingContext(name_space, service, version, isSelf, out context))
                 {
-                    var res = inv.Progress(links);
-                    if (res == null)
+                    //если объекта ожидания еще небыло в очереди - посылаем на запуск очереди ожидания
+                    SendToOperator(isSelf);
+                }
+                return context.Task;
+            }
+            else
+            {
+                return Task.Run(() => cacheEntry.links);
+            }
+        }
+
+        //namespace:service:version
+        private string GetKey(string name_space, string service, string version) => $"{name_space}:{service}:{version}";
+
+        /// <summary>
+        /// Опрос оператора. Либо в очередь диспатчера - для оповещении о себе, либо в очередь операций для информации об окружающих сервисах
+        /// </summary>
+        /// <param name="isSelf"></param>
+        /// <returns></returns>
+        private async Task SendToOperator(bool isSelf)
+        {
+            if (isSelf)
+            {
+                //input.dispatcher.core
+                await Send(cfg_starter.requestdispatcherexchangename, true);
+            }
+            else
+            {
+                //input.operator.core
+                await Send(cfg_starter.requestexchangename, false);
+            }
+        }
+
+        /// <summary>
+        /// Опрос оператора
+        /// </summary>
+        /// <param name="exchange"></param>
+        /// <param name="isSelf"></param>
+        /// <returns></returns>
+        private async Task Send(string exchange, bool isSelf)
+        {
+            if (this.Bind)
+            {
+                List<object> request = new List<object>();
+                List<TaskCompletionSource<LinkEntry[]>> cancelledTacks = new List<TaskCompletionSource<LinkEntry[]>>();
+                foreach (var p_item in pending)
+                {
+                    var state = p_item.Value?.Task?.AsyncState as PendingEventArgs;
+                    //если объект соответствует типу и еще не запущен
+                    if (state != null && state.IsSelf == isSelf && !state.IsSend)
                     {
-                        inv.FailCallback?.Invoke($"not available for service {key}");
+                        request.Add(state.Request);
+                        cancelledTacks.Add(p_item.Value);
                     }
-                    else
+                }
+                if (request.Any())
+                {
+                    try
                     {
-                        inv.SuccessCallback?.Invoke(res);
+                        var data_str = JsonConvert.SerializeObject(request);
+                        if (data_str != null)
+                        {
+                            var properties = Connection.CreateChannelProperties();
+                            properties.CorrelationId = Guid.NewGuid().ToString();
+                            properties.ReplyTo = cfg_starter.responseexchangename;
+                            properties.AppId = AppId;
+                            properties.MessageId = Guid.NewGuid().ToString();
+
+                            ProducerParam options = new ProducerParam()
+                            {
+                                ExchangeParam = new ChannelExchangeParam()
+                                {
+                                    Name = exchange,
+                                    Type = ExchangeTypes.EXCHANGETYPE_FANOUT
+                                }
+                            };
+                            //отправляем скопом всех ожидающих процессов в одном запросе
+                            Connection.Publish(options, Encoding.UTF8.GetBytes(data_str), properties);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        foreach (var taskcs in cancelledTacks)
+                        {
+                            taskcs.SetException(exception);
+                        }
                     }
                 }
             }
         }
 
-        private void FailedPendingElement(string key, string error_message)
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="context"></param>
+        /// <returns>
+        /// Возвращает true если объект уже был в очереди ожидания
+        /// </returns>
+        /// <remarks>
+        /// lock необходим для того, чтобы операция добавления и возврата значений была атомарна
+        /// отдельный метод необходим для  того, чтобы знать добавляется или возвращается элемент
+        /// </remarks>
+        private bool GetOrGeneratePendingContext(string name_space, string service, string version, bool isSelf, out TaskCompletionSource<LinkEntry[]> context)
         {
-            List<ResolverInvoker> invokers = null;
-            if (pending.TryGetValue(key, out invokers))
+            lock (pending)
             {
-                foreach (var inv in invokers)
+                var serviceKey = GetKey(name_space, service, version);
+
+                var ver = 1;
+                int.TryParse(version, out ver);
+
+                if (pending.TryGetValue(serviceKey, out context))
                 {
-                    inv.FailCallback?.Invoke(error_message);
+                    return true;
+                }
+                else
+                {
+                    context = new TaskCompletionSource<LinkEntry[]>(new PendingEventArgs()
+                    {
+                        IsSelf = isSelf,
+                        IsSend = false,
+                        Request = new ResolverEntry
+                        {
+                            Namespace = name_space,
+                            service = service,
+                            version = ver,
+                            type = isSelf ? SELF_LINK_SIGN : null
+                        }
+                    });
+                    pending.TryAdd(serviceKey, context);
+                    return false;
                 }
             }
         }
-
-        public string Resolve(string service, string type) {
-
-            return "";
-
-        }
-
-
     }
 }

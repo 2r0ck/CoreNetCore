@@ -18,7 +18,7 @@ namespace CoreNetCore.Models
 
         public string type { get; set; }
 
-        public List<LinkEntry> link { get; set; }
+        public LinkEntry[] link { get; set; }
 
         public bool result { get; set; }
 

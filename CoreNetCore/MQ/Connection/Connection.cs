@@ -276,6 +276,8 @@ namespace CoreNetCore.MQ
             }
         }
 
+       
+
         private void Connection_ConnectionShutdown(object sender, ShutdownEventArgs e)
         {
             Trace.TraceWarning($"MQ Disconnected. ReplyCode = {e.ReplyCode}; ReplyText: {e.ReplyText}");

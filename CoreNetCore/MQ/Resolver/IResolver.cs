@@ -1,8 +1,10 @@
-﻿namespace CoreNetCore.MQ
+﻿using System.Threading.Tasks;
+
+namespace CoreNetCore.MQ
 {
     public interface IResolver
     {
         bool Bind { get; }
-        string Resolve(string service, string type);
+        Task<string> Resolve(string service, string type);
     }
 }

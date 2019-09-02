@@ -1,21 +1,14 @@
 ﻿using CoreNetCore;
 using CoreNetCore.Models;
-using CoreNetCore.MQ;
-using CoreNetCore.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Diagnostics;
-using System.IO;
-using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace TestPlatformService
 {
     internal class Program
     {
-
-        private static  void Main(string[] args)
+        private static void Main(string[] args)
         {
             //Stream myFile = File.Create("TestPlatformServiceLog.txt");
 
@@ -42,7 +35,6 @@ namespace TestPlatformService
             //host.Create();
             //host.StartAsync();
 
-
             //hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
 
             //var hel = host.Services.GetService<IHealthcheck>();
@@ -54,7 +46,6 @@ namespace TestPlatformService
             //Console.WriteLine("Press key to exit..");
             //Console.ReadLine();
 
-
             //var hostBuilder = new CoreHostBuilder();
             //var host = hostBuilder.Build();
 
@@ -63,10 +54,6 @@ namespace TestPlatformService
 
             //Console.WriteLine("Press key to exit..");
             //Console.ReadLine();
-
-
-
-
 
             //var hostBuilder = new CoreHostBuilder();
 
@@ -79,24 +66,37 @@ namespace TestPlatformService
             //           .Build();
             //host.GetService<IPlatformService>().Run();
 
+            var hostBuilder = new CoreHostBuilder();
 
-              NewMethod();
+            var host = hostBuilder
+                       .ConfigureServices((builderContext, services) =>
+                       {
+                           services.AddScoped<IPlatformService, SubscriberFabric>();
+                       }
+                       )
+                       .Build();
+            var serv = host.GetService<IPlatformService>();
+
+            serv.Run();
+
+            // NewMethod();
+            //for (int i = 0; i < 100000; i++)
+            // {
+            // new SubscriberFabric().Test();
+            //  }
 
             Console.WriteLine("Press key to exit..");
             Console.ReadLine();
-
         }
 
-        private static async void  NewMethod()
+        private static async void NewMethod()
         {
             try
             {
                 ////var t = await Task.Run(() => { throw new Exception("lalal"); return 1; }).ContinueWith(res => { return res.Result; });
                 //return Push1().ContinueWith(res => {
-
                 //    if (res.Exception != null)
                 //    {
-
                 //    }
 
                 //    return res.Result;
@@ -104,23 +104,17 @@ namespace TestPlatformService
                 //});
                 var c = await Push1();
                 Console.WriteLine(c.Result);
-
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                
             }
-
         }
 
-
-
-        public static  Task<CallbackMessageEventArgs<object>> Push1()
+        public static Task<CallbackMessageEventArgs<object>> Push1()
         {
             //throw new Exception("lalalal3");
             //return await Push2();
-
 
             return Push2().ContinueWith((res) =>
             {
@@ -128,22 +122,16 @@ namespace TestPlatformService
                 //{
                 //    throw res.Exception;
                 //}
-                
+
                 // throw new Exception("lalalal3");
                 return res.Result;
             });
-
-
-
-
         }
-
 
         public static Task<CallbackMessageEventArgs<object>> Push2()
         {
             //throw new Exception("lalalal3");
             //return await Push2();
-
 
             return Push3().ContinueWith((res) =>
             {
@@ -155,10 +143,6 @@ namespace TestPlatformService
                 // throw new Exception("lalalal3");
                 return res.Result;
             });
-
-
-
-
         }
 
         public static Task<CallbackMessageEventArgs<object>> Push3()
@@ -172,7 +156,7 @@ namespace TestPlatformService
             {
                 tcs.SetException(ex);
             }
-           
+
             return tcs.Task;
         }
     }

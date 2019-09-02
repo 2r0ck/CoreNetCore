@@ -94,7 +94,7 @@ namespace CoreNetCore.MQ
 
         public string Resolve(string service, string type)
         {
-            return Resolver.Resolve(service, type);
+            return Resolver.Resolve(service, type).Result;
         }
 
       
