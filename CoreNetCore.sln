@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoreNetCoreTest", "CoreNetC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoreNetCoreParallelTest", "CoreNetCoreParallelTest\CoreNetCoreParallelTest.csproj", "{F2A4F98C-FC66-45FD-85EA-93D12DC17E62}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestPlatformService", "TestPlatformService\TestPlatformService.csproj", "{E344A59A-40E4-485B-9295-050617CB2689}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestPlatformService", "TestPlatformService\TestPlatformService.csproj", "{E344A59A-40E4-485B-9295-050617CB2689}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 namespace CoreNetCore.Models
@@ -13,10 +14,10 @@ namespace CoreNetCore.Models
 
         public int? version { get; set; }
 
-        public int? sub_version { get; set; }
+        public string sub_version { get; set; }
         public bool self_link { get; set; }
 
-        public LinkEntry[] links { get; }      
+        public LinkEntry[] links { get; set; }
         
     }
 }

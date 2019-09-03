@@ -14,7 +14,7 @@ namespace CoreNetCore.Models
 
         public int? version { get; set; }
 
-        public int? sub_version { get; set; }
+        public string sub_version { get; set; }
 
         public string type { get; set; }
 
