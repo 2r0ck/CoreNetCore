@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ 
 {
@@ -28,12 +29,48 @@ namespace CoreNetCore.MQ
         public ICoreConnection Connection { get;}
         public IResolver Resolver { get; }
 
-        public CoreDispatcher(IPrepareConfigService config, IAppId appId, ICoreConnection coreConnection, IResolver resolver)
+        bool running = false;
+
+        public CoreDispatcher(IPrepareConfigService config, IAppId appId, ICoreConnection coreConnection, IResolver resolver, IHealthcheck healthcheck)
         {
             Config = config;
             AppId = appId.CurrentUID;
             Connection = coreConnection;
             Resolver = resolver;
+            healthcheck.AddCheck(() => running);
+            Resolver.Stopped+=(appid) => { running = false; };
+            Resolver.Started += Resolver_Started;
+        }
+
+        private void Resolver_Started(string obj)
+        {
+            try
+            {
+                //TODO: Self resolving timeout, exiting ...
+                Trace.TraceInformation("Resolver started");
+
+                var links = Resolver.RegisterSelf().Result;
+                Trace.TraceInformation("Self links resolved");
+
+                if (links != null)
+                {
+                    foreach (var link in links)
+                    {
+
+                    }
+                }
+
+
+
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+           
+
+
         }
 
 
@@ -92,11 +129,13 @@ namespace CoreNetCore.MQ
             return LinkTypes.GetLinkByExchangeType(exchangeKind) == LinkTypes.LINK_EXCHANGE ? ExchangeConnectionString : QueueConnectionString;
         }
 
-        public string Resolve(string service, string type)
+        public Task<string> Resolve(string service, string type)
         {
-            return Resolver.Resolve(service, type).Result;
+            return Resolver.Resolve(service, type);
         }
 
+
+       
       
     }
 }

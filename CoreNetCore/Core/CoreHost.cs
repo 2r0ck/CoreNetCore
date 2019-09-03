@@ -33,6 +33,14 @@ namespace CoreNetCore
             {
                 throw new CoreException("CoreConnection not defined");
             }
+
+            //????/
+            var dispatcher = this.GetService<ICoreDispatcher>();
+            if (dispatcher == null)
+            {
+                throw new CoreException("CoreDispatcher not defined");
+            }
+
             connection.Start();
             await healthck.StartAsync();
         }

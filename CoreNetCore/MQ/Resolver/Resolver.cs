@@ -3,7 +3,6 @@ using CoreNetCore.Models;
 using CoreNetCore.Utils;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -29,6 +28,10 @@ namespace CoreNetCore.MQ
         public IPrepareConfigService Configuration { get; }
         public string AppId { get; }
 
+        public event Action<string> Started;
+
+        public event Action<string> Stopped;
+
         // public ConcurrentDictionary<string, List<ResolverInvoker>> pending = new ConcurrentDictionary<string, List<ResolverInvoker>>();
 
         public Resolver(IMemoryCache memoryCache, ICoreConnection connection, IPrepareConfigService configuration, IHealthcheck healthcheck, IAppId appId)
@@ -41,14 +44,17 @@ namespace CoreNetCore.MQ
             Bind = false;
             healthcheck.AddCheck(() => Bind);
             connection.Connected += Connection_Connected;
+            connection.Disconnected += (appid) =>
+            {
+                Bind = false;
+                Stopped?.Invoke(appid);
+            };
         }
-
 
         private void Connection_Connected(string appId)
         {
-           
             var refreshInterval = cfg_starter.pingperiod_ms;
-          
+
             var cparam = new ConsumerParam()
             {
                 QueueParam = new ChannelQueueParam()
@@ -60,81 +66,86 @@ namespace CoreNetCore.MQ
                 {
                     Name = cfg_starter.responseexchangename,
                     Type = ExchangeTypes.EXCHANGETYPE_DIRECT,
-                    AutoDelete = true
+                    AutoDelete = false
                 }
             };
+
+            var res = Connection.Listen(cparam, (msg) =>
+           {
+               //очередь принимает массив ссылок (links)
+               var responceStr = System.Text.Encoding.UTF8.GetString(msg.Content);
+               var responce = responceStr.FromJson<List<ResolverEntry>>();
+
+               if (responce?.Any() ?? false)
+               {
+                   //по каждой ссылке
+                   foreach (var element in responce)
+                   {
+                       //ключ -  имя сервиса с версией
+                       var key = GetKey(element.Namespace, element.service, element.version ?? 0);
+                       try
+                       {
+                           if (element.result)
+                           {
+                               var links = element?.link;
+
+                               if (links == null)
+                               {
+                                   throw new CoreException($"Resolver queue: Empty links for service. Key: {key}");
+                               }
+                               //если не self очереди - кэшируем
+                               if (element.type != CacheItem.SELF_TOKEN)
+                               {
+                                   //создаем элемент в кэше
+                                   var cache_item = new CacheItem()
+                                   {
+                                       Namespace = element.Namespace,
+                                       service = element.service,
+                                       version = element.version,
+                                       sub_version = element.sub_version,
+                                       self_link = false,
+                                       links = links
+                                   };
+                                   Cache.Set(key, cache_item, GetCacheOptions());
+                               }
+                               //отвечаем на запросы
+                               var tsc = GetPengingValue(key);
+                               if (tsc != null)
+                               {
+                                   tsc.SetResult(links.ToArray());
+                               }
+                           }
+                           else
+                           {
+                               throw new CoreException($"Resolver queue: response element result is false. Key: {key}");
+                           }
+                       }
+                       catch (Exception ex)
+                       {
+                           Trace.TraceWarning(($"Resolver queue error: {ex}"));
+                           var tsc = GetPengingValue(key);
+                           tsc?.SetException(ex);
+                       }
+                       finally
+                       {
+                           RemovePengingElement(key);
+                       }
+                   }
+               }
+               msg.Ask();
+           }).Result;
+
             //TODO: refresh interval!!!!
-            Connection.Listen(cparam, (msg) =>
-            {
-                //очередь принимает массив ссылок (links)
-                var responceStr = System.Text.Encoding.UTF8.GetString(msg.Content);
-                var responce = responceStr.FromJson<List<ResolverEntry>>();
 
-                if (responce?.Any() ?? false)
-                {
-                    //по каждой ссылке
-                    foreach (var element in responce)
-                    {
-                        //ключ -  имя сервиса с версией
-                        var key = GetKey(element.Namespace, element.service, element.version??0);
-                        try
-                        {
-                            if (element.result)
-                            {
-                                var links = element?.link;
-
-                                if (links == null)
-                                {
-                                    throw new CoreException($"Resolver queue: Empty links for service. Key: {key}");
-                                }
-                                //если не self очереди - кэшируем
-                                if (element.type != CacheItem.SELF_TOKEN)
-                                {
-                                    //создаем элемент в кэше                                
-                                    var cache_item = new CacheItem()
-                                    {
-                                        Namespace = element.Namespace,
-                                        service = element.service,
-                                        version = element.version,
-                                        sub_version = element.sub_version,
-                                        self_link = false,
-                                        links = links
-                                    };
-                                    Cache.Set(key, cache_item, GetCacheOptions());
-                                }
-                                //отвечаем на запросы
-                                var tsc = GetPengingValue(key);
-                                if (tsc != null)
-                                {
-                                    tsc.SetResult(links.ToArray());
-                                }
-                            }
-                            else
-                            {
-                                throw new CoreException($"Resolver queue: response element result is false. Key: {key}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.TraceWarning(($"Resolver queue error: {ex}"));
-                            var tsc = GetPengingValue(key);
-                            tsc?.SetException(ex);
-                        }
-                        finally
-                        {
-                            RemovePengingElement(key);
-                        }                       
-                    }
-                }
-                msg.Ask();
-            });
-            Trace.TraceInformation("Resolver queue created");
             Bind = true;
+            //SendToOperator(true).Wait();
+            // SendToOperator(false).Wait();
+
+            Started?.Invoke(AppId);
+            Trace.TraceInformation("Resolver queue created");
         }
 
-
-
-        public  async Task<string> Resolve(string service, string type)
+        public async Task<string> Resolve(string service, string type)
         {
             var nsv = Regex.Split(service, @"/([A-Za-z0-9-\._]{1,100}?):([A-Za-z0-9:\.-_]{1,100}?):([0-9]{1,9}?)/");
             if (nsv == null || nsv.Length < 3)
@@ -143,7 +154,7 @@ namespace CoreNetCore.MQ
             }
 
             var vers = 0;
-            if(!int.TryParse(nsv[2], out vers))
+            if (!int.TryParse(nsv[2], out vers))
             {
                 Trace.TraceWarning($"Service version not parse. Service: {service}");
             }
@@ -153,22 +164,28 @@ namespace CoreNetCore.MQ
             return links?.Where(x => x.type?.Equals(type, StringComparison.InvariantCultureIgnoreCase) ?? false).Select(x => x.name).FirstOrDefault();
         }
 
-        private Task<LinkEntry[]> RegisterSelf()
+        public Task<LinkEntry[]> RegisterSelf()
         {
             Trace.TraceInformation("Register Self started..");
             string name_space = cfg_starter._this._namespace;
             string service = cfg_starter._this.servicename;
-            int version = cfg_starter._this.majorversion?? 0;
+            int version = cfg_starter._this.majorversion ?? 0;
             string sub_ver = cfg_starter._this.subversion;
 
             TaskCompletionSource<LinkEntry[]> context;
-            if (GetOrGeneratePendingContext(name_space, service, version, sub_ver, true, out context))
+            if (!GetOrGeneratePendingContext(name_space, service, version, sub_ver, true, out context))
             {
                 //если объекта ожидания еще небыло в очереди - посылаем на запуск очереди ожидания
-                SendToOperator(true);
+                SendToOperator(true)
+                    .ContinueWith(res =>
+                {
+                    if (res.Exception != null)
+                    {
+                        context.SetException(res.Exception);
+                    }
+                });
             }
             return context.Task;
-
         }
 
         private Task<LinkEntry[]> GetLinks(string name_space, string service, int version, bool isSelf)
@@ -178,10 +195,17 @@ namespace CoreNetCore.MQ
             if (cacheEntry == null)
             {
                 TaskCompletionSource<LinkEntry[]> context;
-                if (!GetOrGeneratePendingContext(name_space, service, version,null, isSelf, out context))
+                if (!GetOrGeneratePendingContext(name_space, service, version, null, isSelf, out context))
                 {
                     //если объекта ожидания еще небыло в очереди - посылаем на запуск очереди ожидания
-                    SendToOperator(isSelf);
+                    SendToOperator(isSelf)
+                        .ContinueWith(res =>
+                        {
+                            if (res.Exception != null)
+                            {
+                                context.SetException(res.Exception);
+                            }
+                        });
                 }
                 return context.Task;
             }
@@ -194,7 +218,7 @@ namespace CoreNetCore.MQ
         //namespace:service:version
 
         /// <summary>
-        /// Опрос оператора. 
+        /// Опрос оператора.
         /// Либо в очередь диспатчера - для оповещении о себе и получении информации на каких очередях подниматься,
         /// либо в очередь операций для информации об очередях окружающих сервисов
         /// </summary>
@@ -203,7 +227,7 @@ namespace CoreNetCore.MQ
         private async Task SendToOperator(bool isSelf)
         {
             if (isSelf)
-            {
+            {              
                 //input.dispatcher.core
                 await Send(cfg_starter.requestdispatcherexchangename, true);
             }
@@ -220,56 +244,59 @@ namespace CoreNetCore.MQ
         /// <param name="exchange"></param>
         /// <param name="isSelf"></param>
         /// <returns></returns>
-        private async Task Send(string exchange, bool isSelf)
+        private Task Send(string exchange, bool isSelf)
         {
-            if (this.Bind)
+            return Task.Run(() =>
             {
-                List<object> request = new List<object>();
-                List<TaskCompletionSource<LinkEntry[]>> cancelledTacks = new List<TaskCompletionSource<LinkEntry[]>>();
-                foreach (var p_item in pending)
+                if (this.Bind)
                 {
-                    var state = p_item.Value?.Task?.AsyncState as PendingEventArgs;
-                    //если объект соответствует типу и еще не запущен
-                    if (state != null && state.IsSelf == isSelf && !state.IsSend)
+                    List<object> request = new List<object>();
+                    List<TaskCompletionSource<LinkEntry[]>> cancelledTacks = new List<TaskCompletionSource<LinkEntry[]>>();
+                    foreach (var p_item in pending)
                     {
-                        request.Add(state.Request);
-                        cancelledTacks.Add(p_item.Value);
-                    }
-                }
-                if (request.Any())
-                {
-                    try
-                    {
-                        var data_str = request.ToJson(true);
-                        if (data_str != null)
+                        var state = p_item.Value?.Task?.AsyncState as PendingEventArgs;
+                        //если объект соответствует типу и еще не запущен
+                        if (state != null && state.IsSelf == isSelf && !state.IsSend)
                         {
-                            var properties = Connection.CreateChannelProperties();
-                            properties.CorrelationId = Guid.NewGuid().ToString();
-                            properties.ReplyTo = cfg_starter.responseexchangename;
-                            properties.AppId = AppId;
-                            properties.MessageId = Guid.NewGuid().ToString();
-
-                            ProducerParam options = new ProducerParam()
+                            request.Add(state.Request);
+                            cancelledTacks.Add(p_item.Value);
+                        }
+                    }
+                    if (request.Any())
+                    {
+                        try
+                        {
+                            var data_str = request.ToJson(true);
+                            if (data_str != null)
                             {
-                                ExchangeParam = new ChannelExchangeParam()
+                                var properties = Connection.CreateChannelProperties();
+                                properties.CorrelationId = Guid.NewGuid().ToString();
+                                properties.ReplyTo = cfg_starter.responseexchangename;
+                                properties.AppId = AppId;
+                                properties.MessageId = Guid.NewGuid().ToString();
+
+                                ProducerParam options = new ProducerParam()
                                 {
-                                    Name = exchange,
-                                    Type = ExchangeTypes.EXCHANGETYPE_FANOUT
-                                }
-                            };
-                            //отправляем скопом всех ожидающих процессов в одном запросе
-                            Connection.Publish(options, Encoding.UTF8.GetBytes(data_str), properties);
+                                    ExchangeParam = new ChannelExchangeParam()
+                                    {
+                                        Name = exchange,
+                                        Type = ExchangeTypes.EXCHANGETYPE_FANOUT
+                                    }
+                                };
+                                //отправляем скопом всех ожидающих процессов в одном запросе
+                                Connection.Publish(options, Encoding.UTF8.GetBytes(data_str), properties);
+                            }
                         }
-                    }
-                    catch (Exception exception)
-                    {
-                        foreach (var taskcs in cancelledTacks)
+                        catch (Exception exception)
                         {
-                            taskcs.SetException(exception);
+                            foreach (var taskcs in cancelledTacks)
+                            {
+                                taskcs.SetException(exception);
+                            }
                         }
                     }
                 }
-            }
+            });
         }
 
         /// <summary>
@@ -289,7 +316,6 @@ namespace CoreNetCore.MQ
             lock (pending)
             {
                 var serviceKey = GetKey(name_space, service, version);
- 
 
                 if (pending.TryGetValue(serviceKey, out context))
                 {
@@ -316,10 +342,9 @@ namespace CoreNetCore.MQ
 
         private string GetKey(string name_space, string service, int version) => $"{name_space}:{service}:{version}";
 
-
         private MemoryCacheEntryOptions GetCacheOptions()
-        {            
-            return   new MemoryCacheEntryOptions()
+        {
+            return new MemoryCacheEntryOptions()
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(cfg_starter.cacheEntryTTL_sec ?? 0)
             };
@@ -328,7 +353,7 @@ namespace CoreNetCore.MQ
         private TaskCompletionSource<LinkEntry[]> GetPengingValue(string key)
         {
             TaskCompletionSource<LinkEntry[]> value = null;
-            if (!this.pending.TryGetValue(key,out value))
+            if (!this.pending.TryGetValue(key, out value))
             {
                 Trace.TraceWarning($"Resolver: get pending element fail. Key:{key}");
             }
@@ -339,7 +364,7 @@ namespace CoreNetCore.MQ
         {
             TaskCompletionSource<LinkEntry[]> value = null;
             if (this.pending.TryRemove(key, out value))
-            {                
+            {
                 return true;
             }
             Trace.TraceWarning($"Resolver: remove pending element fail. Key:{key}");

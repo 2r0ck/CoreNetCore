@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using CoreNetCore.Models;
 using RabbitMQ.Client;
 
@@ -15,7 +16,7 @@ namespace CoreNetCore.MQ
 
         void Cancel(string consumerTag);
         void Dispose();
-        string Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback);
+        Task<string> Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback);
         void Publish(ProducerParam pparam, byte[] content, IBasicProperties customProperties);
         IBasicProperties CreateChannelProperties();
         void Start();

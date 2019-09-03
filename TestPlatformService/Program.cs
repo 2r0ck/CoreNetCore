@@ -2,6 +2,8 @@
 using CoreNetCore.Models;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace TestPlatformService
@@ -10,14 +12,14 @@ namespace TestPlatformService
     {
         private static void Main(string[] args)
         {
-            //Stream myFile = File.Create("TestPlatformServiceLog.txt");
+            Stream myFile = File.Create("TestPlatformServiceLog.txt");
 
-            //TextWriterTraceListener myTextListener = new
-            //   CustomTrace(myFile);
-            //Trace.Listeners.Add(myTextListener);
+            TextWriterTraceListener myTextListener = new
+               CustomTrace(myFile);
+            Trace.Listeners.Add(myTextListener);
             ////myTextListener.TraceOutputOptions = TraceOptions.DateTime;
 
-            //Trace.AutoFlush = true;
+            Trace.AutoFlush = true;
 
             //var hostBuilder = new CoreHostBuilder();
 
@@ -75,9 +77,10 @@ namespace TestPlatformService
                        }
                        )
                        .Build();
-            var serv = host.GetService<IPlatformService>();
+            host.StartAsync();
+           // var serv = host.GetService<IPlatformService>();
 
-            serv.Run();
+            //serv.Run();
 
             // NewMethod();
             //for (int i = 0; i < 100000; i++)

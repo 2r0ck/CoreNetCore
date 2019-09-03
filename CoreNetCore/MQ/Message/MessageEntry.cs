@@ -3,6 +3,7 @@ using CoreNetCore.Utils;
 using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
@@ -114,11 +115,13 @@ namespace CoreNetCore.MQ
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND_TYPE, MessageBasicPropertiesHeaders.WORKKIND_TYPE_VALUE);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA_TYPE, MessageBasicPropertiesHeaders.VIA_TYPE_VALUE);
 
+            exchangeType = ExchangeTypes.Get(exchangeType);
+
             var link = LinkTypes.GetLinkByExchangeType(exchangeType);
 
             var routingKey = string.Empty;
 
-            if (ExchangeTypes.Get(exchangeType) == ExchangeTypes.EXCHANGETYPE_FANOUT)
+            if (exchangeType == ExchangeTypes.EXCHANGETYPE_FANOUT)
             {
                 routingKey = serviceName;
             }
@@ -153,7 +156,76 @@ namespace CoreNetCore.MQ
 
         public Task<CallbackMessageEventArgs<ViaElement>> Push(ViaElement via, bool requestResolve, string link, string service, string exchangeName, string routingKey, string exchangeType, object queryData, IBasicProperties properties)
         {
-            return null;
+            CallbackMessageEventArgs<ViaElement> messageEventArgs = new CallbackMessageEventArgs<ViaElement>();
+
+            if (requestResolve)
+            {
+                //Для начала надо узнать в какие очереди посылать запросы
+                return this.Dispatcher.Resolve(service, link)
+                      .ContinueWith(resolver_link =>
+                      {
+                          try
+                          {
+                              if (resolver_link.Exception != null)
+                              {
+                                  messageEventArgs.IsSuccess = false;
+                                  messageEventArgs.SetException(resolver_link.Exception);
+                              }
+                              var link_str = resolver_link.Result;
+                              var exchange = ExchangeTypes.GetExchangeName(link_str, null, exchangeType);
+                              var rk = ExchangeType.Fanout.Equals(exchangeType, StringComparison.CurrentCultureIgnoreCase) ? exchange : routingKey;
+
+                              var options = new ProducerParam()
+                              {
+                                  RoutingKey = rk,
+                                  ExchangeParam = new ChannelExchangeParam()
+                                  {
+                                      Name = exchange,
+                                      Type = exchangeType ?? ExchangeTypes.EXCHANGETYPE_FANOUT
+                                  }
+                              };
+                              var data = Encoding.UTF8.GetBytes(queryData.ToJson(true));
+
+                              Dispatcher.Connection.Publish(options, data, properties);
+                              messageEventArgs.IsSuccess = true;
+                              messageEventArgs.Result = via;
+                          }
+                          catch (Exception ex)
+                          {
+                              messageEventArgs.IsSuccess = false;
+                              messageEventArgs.SetException(ex);
+                          }
+                          return messageEventArgs;
+                      });
+            }
+            else
+            {
+                return Task.Run(() =>
+                {
+                    try
+                    {
+                        //для запросов, где очереди известны
+                        var options = new ProducerParam()
+                        {
+                            RoutingKey = routingKey,
+                            ExchangeParam = new ChannelExchangeParam()
+                            {
+                                Name = exchangeName,
+                                Type = exchangeType ?? ExchangeTypes.EXCHANGETYPE_FANOUT
+                            }
+                        };
+                        var data = Encoding.UTF8.GetBytes(queryData.ToJson(true));
+
+                        Dispatcher.Connection.Publish(options, data, properties);
+                    }
+                    catch (Exception ex)
+                    {
+                        messageEventArgs.IsSuccess = false;
+                        messageEventArgs.SetException(ex);
+                    }
+                    return messageEventArgs;
+                });
+            }
         }
     }
 }

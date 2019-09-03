@@ -1,26 +1,27 @@
-﻿namespace CoreNetCore.Models
+﻿using RabbitMQ.Client;
+
+namespace CoreNetCore.Models
 {
     public sealed class ExchangeTypes
     {
         /// <summary>
         /// Тип прямого обмена
         /// </summary>
-        public const string EXCHANGETYPE_DIRECT = "direct";
+        public const string EXCHANGETYPE_DIRECT = ExchangeType.Direct;
 
         /// <summary>
         /// Тип обмена Fanout направляет сообщения во все связанные очереди без разбора.
         /// </summary>
-        public const string EXCHANGETYPE_FANOUT = "fanout";
+        public const string EXCHANGETYPE_FANOUT = ExchangeType.Fanout;
 
         /// <summary>
         /// Тип обмена Тема направляет сообщения в очереди, ключ маршрутизации которых совпадает со всеми или частью ключа маршрутизации.
         /// </summary>
-        public const string EXCHANGETYPE_TOPIC = "topic";
-
+        public const string EXCHANGETYPE_TOPIC  = ExchangeType.Topic;
         /// <summary>
         /// Тип обмена заголовками направляет сообщения на основе сопоставления заголовков сообщений с ожидаемыми заголовками, указанными в очереди привязки.
         /// </summary>
-        public const string EXCHANGETYPE_HEADERS = "headers";
+        public const string EXCHANGETYPE_HEADERS = ExchangeType.Headers;
 
         public static string Get(string str,bool assert =false)
         {
@@ -40,6 +41,18 @@
                     }
             }
 
+        }
+
+        public static string GetExchangeName(string link, string linkType, string exchangeType)
+        {
+            if (string.IsNullOrEmpty(linkType))
+            {
+                return $"{link}.{ExchangeTypes.Get(exchangeType)}";
+            }
+            else
+            {
+                return $"{link}.{LinkTypes.GetExchangeTypeByLink(linkType)}";
+            }
         }
 
         private ExchangeTypes()

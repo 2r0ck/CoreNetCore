@@ -1,6 +1,7 @@
 ﻿using CoreNetCore.Models;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
 {
@@ -29,6 +30,6 @@ namespace CoreNetCore.MQ
 
         string GetConnectionByExchangeType(string exchangeKind);
 
-        string Resolve(string service, string type);
+        Task<string> Resolve(string service, string type);
     }
 }

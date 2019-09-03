@@ -22,7 +22,7 @@ namespace CoreNetCore.Models
         /// <summary>
         /// Автоматически восстанавливает обмен после рестарта
         /// </summary>
-        public bool Durable { get; set; }
+        public bool? Durable { get; set; }
 
         /// <summary>
         /// Автоматически удаляется если закрыта последняя очередь

@@ -13,7 +13,7 @@ namespace CoreNetCore.Configuration
         public PrepareConfigService(IConfiguration configuration)
         {
             Configuration = configuration;
-
+            ReadConfig(configuration);
         }
 
         //ADD MQ и переделать connection

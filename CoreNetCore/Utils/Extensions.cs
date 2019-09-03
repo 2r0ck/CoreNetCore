@@ -1,10 +1,29 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using System;
 
 namespace CoreNetCore.Utils
 {
     public static class Extensions
     {
+
+        public static bool? GetBooleanValue(this IConfiguration config, string key, bool assert = false)
+        {
+            var value = GetStrValue(config, key, assert);
+            bool res =false;
+
+            if (bool.TryParse(value, out res))
+            {
+                return res;
+            }
+
+            if (assert)
+            {
+                throw new CoreException($"Config key parse error [${key}]");
+            }
+            return null;
+        }
+
         public static string GetStrValue(this IConfiguration config, string key, bool assert = false)
         {
             var value = config.GetValue<string>(key);
@@ -37,7 +56,7 @@ namespace CoreNetCore.Utils
             try
             {
                 if (obj == null) return string.Empty;
-                return Newtonsoft.Json.JsonConvert.SerializeObject(obj);
+                return Newtonsoft.Json.JsonConvert.SerializeObject(obj,new JsonSerializerSettings(){NullValueHandling = NullValueHandling.Ignore });
             }
             catch (Exception ex)
             {
