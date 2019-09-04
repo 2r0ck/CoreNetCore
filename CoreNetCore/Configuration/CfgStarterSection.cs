@@ -38,25 +38,7 @@ namespace CoreNetCore.Configuration
 
         
         public string subversion { get; set; }
-        [Required]
         public string ttl { get; set; }
-
-        [Required]
-        public string commit { get; set; }
-
-        [Required]
-        public string hostip { get; set; }
-
-        [Required]
-        public string applicationname { get; set; }
-
-        [Required]
-        public string stack { get; set; }
-
-        [Required]
-        public string environment { get; set; }
-
-        [Required]
-        public string container { get; set; }
+ 
     }
 }

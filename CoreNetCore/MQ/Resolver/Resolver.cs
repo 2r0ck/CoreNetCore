@@ -70,70 +70,70 @@ namespace CoreNetCore.MQ
                 }
             };
 
-            var res = Connection.Listen(cparam, (msg) =>
-           {
+            Connection.Listen(cparam, (msg) =>
+             {
                //очередь принимает массив ссылок (links)
                var responceStr = System.Text.Encoding.UTF8.GetString(msg.Content);
-               var responce = responceStr.FromJson<List<ResolverEntry>>();
+                 var responce = responceStr.FromJson<List<ResolverEntry>>();
 
-               if (responce?.Any() ?? false)
-               {
+                 if (responce?.Any() ?? false)
+                 {
                    //по каждой ссылке
                    foreach (var element in responce)
-                   {
+                     {
                        //ключ -  имя сервиса с версией
                        var key = GetKey(element.Namespace, element.service, element.version ?? 0);
-                       try
-                       {
-                           if (element.result)
-                           {
-                               var links = element?.link;
+                         try
+                         {
+                             if (element.result)
+                             {
+                                 var links = element?.link;
 
-                               if (links == null)
-                               {
-                                   throw new CoreException($"Resolver queue: Empty links for service. Key: {key}");
-                               }
+                                 if (links == null)
+                                 {
+                                     throw new CoreException($"Resolver queue: Empty links for service. Key: {key}");
+                                 }
                                //если не self очереди - кэшируем
                                if (element.type != CacheItem.SELF_TOKEN)
-                               {
+                                 {
                                    //создаем элемент в кэше
                                    var cache_item = new CacheItem()
-                                   {
-                                       Namespace = element.Namespace,
-                                       service = element.service,
-                                       version = element.version,
-                                       sub_version = element.sub_version,
-                                       self_link = false,
-                                       links = links
-                                   };
-                                   Cache.Set(key, cache_item, GetCacheOptions());
-                               }
+                                     {
+                                         Namespace = element.Namespace,
+                                         service = element.service,
+                                         version = element.version,
+                                         sub_version = element.sub_version,
+                                         self_link = false,
+                                         links = links
+                                     };
+                                     Cache.Set(key, cache_item, GetCacheOptions());
+                                 }
                                //отвечаем на запросы
                                var tsc = GetPengingValue(key);
-                               if (tsc != null)
-                               {
-                                   tsc.SetResult(links.ToArray());
-                               }
-                           }
-                           else
-                           {
-                               throw new CoreException($"Resolver queue: response element result is false. Key: {key}");
-                           }
-                       }
-                       catch (Exception ex)
-                       {
-                           Trace.TraceWarning(($"Resolver queue error: {ex}"));
-                           var tsc = GetPengingValue(key);
-                           tsc?.SetException(ex);
-                       }
-                       finally
-                       {
-                           RemovePengingElement(key);
-                       }
-                   }
-               }
-               msg.Ask();
-           }).Result;
+                                 if (tsc != null)
+                                 {
+                                     tsc.SetResult(links.ToArray());
+                                 }
+                             }
+                             else
+                             {
+                                 throw new CoreException($"Resolver queue: response element result is false. Key: {key}");
+                             }
+                         }
+                         catch (Exception ex)
+                         {
+                             Trace.TraceWarning(($"Resolver queue error: {ex}"));
+                             var tsc = GetPengingValue(key);
+                             tsc?.SetException(ex);
+                         }
+                         finally
+                         {
+                             RemovePengingElement(key);
+                         }
+                     }
+                 }
+                 msg.Ask();
+             });
 
             //TODO: refresh interval!!!!
 

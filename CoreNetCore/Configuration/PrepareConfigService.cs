@@ -10,6 +10,8 @@ namespace CoreNetCore.Configuration
         public IConfiguration Configuration { get; }
         public CfgStarterSection Starter { get; private set; }
 
+        public CfgMqSection MQ { get; private set; }
+
         public PrepareConfigService(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -22,6 +24,10 @@ namespace CoreNetCore.Configuration
             Starter = new CfgStarterSection();
             configuration.GetSection("starter").Bind(Starter, options => options.BindNonPublicProperties = true);
             Starter.ValidateAndTrace("starter");
+
+            MQ = new CfgMqSection();
+            configuration.GetSection("mq").Bind(MQ);
+            Starter.ValidateAndTrace("mq");
         }
 
     }

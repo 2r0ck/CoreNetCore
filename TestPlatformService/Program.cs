@@ -10,8 +10,12 @@ namespace TestPlatformService
 {
     internal class Program
     {
-        private static void Main(string[] args)
+        private static  void Main(string[] args)
         {
+
+           
+
+
             Stream myFile = File.Create("TestPlatformServiceLog.txt");
 
             TextWriterTraceListener myTextListener = new
@@ -77,8 +81,21 @@ namespace TestPlatformService
                        }
                        )
                        .Build();
-            host.StartAsync();
-           // var serv = host.GetService<IPlatformService>();
+
+
+
+
+            host.StartAsync().ContinueWith(res => {
+                if (res.Exception != null)
+                {
+                    Console.WriteLine(res.Exception.ToString());
+                }
+                else
+                {
+                    Console.WriteLine("App STARTED!");
+                }
+            });
+            // var serv = host.GetService<IPlatformService>();
 
             //serv.Run();
 
@@ -90,6 +107,8 @@ namespace TestPlatformService
 
             Console.WriteLine("Press key to exit..");
             Console.ReadLine();
+
+            host.StopAsync();
         }
 
         private static async void NewMethod()
@@ -106,7 +125,7 @@ namespace TestPlatformService
 
                 //});
                 var c = await Push1();
-                Console.WriteLine(c.Result);
+                Console.WriteLine(c.data);
             }
             catch (Exception ex)
             {
@@ -114,7 +133,7 @@ namespace TestPlatformService
             }
         }
 
-        public static Task<CallbackMessageEventArgs<object>> Push1()
+        public static Task<DataArgs<object>> Push1()
         {
             //throw new Exception("lalalal3");
             //return await Push2();
@@ -131,7 +150,7 @@ namespace TestPlatformService
             });
         }
 
-        public static Task<CallbackMessageEventArgs<object>> Push2()
+        public static Task<DataArgs<object>> Push2()
         {
             //throw new Exception("lalalal3");
             //return await Push2();
@@ -148,9 +167,9 @@ namespace TestPlatformService
             });
         }
 
-        public static Task<CallbackMessageEventArgs<object>> Push3()
+        public static Task<DataArgs<object>> Push3()
         {
-            TaskCompletionSource<CallbackMessageEventArgs<object>> tcs = new TaskCompletionSource<CallbackMessageEventArgs<object>>();
+            TaskCompletionSource<DataArgs<object>> tcs = new TaskCompletionSource<DataArgs<object>>();
             try
             {
                 throw new Exception("lalalal2");

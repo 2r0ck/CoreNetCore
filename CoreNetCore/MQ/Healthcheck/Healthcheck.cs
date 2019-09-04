@@ -21,13 +21,13 @@ namespace CoreNetCore.MQ
 
         }
 
-        public async Task StartAsync()
+        public Task StartAsync()
         {
             var port = Configuration.GetIntValue("mq:healthcheckPort") ?? 8048;
             http = new HttpLocalWorker(port);
             http.AddGet("/healthcheck", () => Validate().ToString());
 
-            await http.StartAsync(
+         return http.StartAsync(
                 () => Trace.TraceInformation($"Healtcheck started. Port: {port}"),
                 () => Trace.TraceInformation($"Healtcheck stoped."));
         }

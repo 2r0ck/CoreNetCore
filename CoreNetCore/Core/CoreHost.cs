@@ -1,6 +1,7 @@
 ﻿using CoreNetCore.MQ;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,6 +23,9 @@ namespace CoreNetCore
         //TODO: посмотри, тут какая то херня(возможн) and StopAsync
         public async Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
+            
+            AutoResetEvent continueStart = new AutoResetEvent(false);
+
             var healthck = this.GetService<IHealthcheck>();
             if (healthck == null)
             {
@@ -41,8 +45,16 @@ namespace CoreNetCore
                 throw new CoreException("CoreDispatcher not defined");
             }
 
+            dispatcher.Started += (appid) =>
+            {
+                Trace.TraceInformation($"Dispatcher [{appid}] started.");
+                continueStart.Set();
+            };
+
             connection.Start();
-            await healthck.StartAsync();
+            healthck.StartAsync();          
+
+            continueStart.WaitOne();
         }
 
         public async Task StopAsync(CancellationToken cancellationToken = default(CancellationToken))

@@ -177,12 +177,13 @@ namespace CoreNetCore.MQ
         /// <param name="cparam">Парамеры создания обмена, очереди и подписчика</param>
         /// <param name="callback">Функция обратного вызова при получении сообщения</param>
         /// <returns></returns>
-        public Task<string> Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback)
+        public string Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback)
         {
-            return Task.Run(() =>
-            {
-                try
-                {
+            //TODO: expires param mq.queue.ttl mq.bind.ttl 
+            //return Task.Run(() =>
+            //{
+            //    try
+            //    {
                     if (cparam?.QueueParam == null)
                     {
                         throw new CoreException("QueueParam not declared");
@@ -221,7 +222,7 @@ namespace CoreNetCore.MQ
                     {
                         if (callback != null)
                         {
-                            //TODO:  Ask Nask with try-catch?
+                            //TODO:  Ask Nask with try-catch? check if throw exception 
                             var msg = new ReceivedMessageEventArgs(ea,
                                     () => channel.BasicAck(ea.DeliveryTag, multiple: false),
                                     (autoRepit) => channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit));
@@ -229,12 +230,12 @@ namespace CoreNetCore.MQ
                         }
                     };
                     return channel.BasicConsume(cparam.QueueParam.Name, cparam.AutoAck, consumer);
-                }
-                catch (Exception ex)
-                {
-                    throw new CoreException(ex);
-                }
-            });
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        throw new CoreException(ex);
+            //    }
+            //});
         }
 
         /// <summary>

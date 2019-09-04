@@ -9,6 +9,11 @@ namespace CoreNetCore.Models
     public class ViaContainer
     {
        public  Stack<ViaElement> queue { get; set; }
+
+        public ViaElement GetLast()
+        {
+            return queue?.Peek();
+        }
     }
 
 

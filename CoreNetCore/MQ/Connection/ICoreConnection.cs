@@ -16,7 +16,7 @@ namespace CoreNetCore.MQ
 
         void Cancel(string consumerTag);
         void Dispose();
-        Task<string> Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback);
+        string Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback);
         void Publish(ProducerParam pparam, byte[] content, IBasicProperties customProperties);
         IBasicProperties CreateChannelProperties();
         void Start();

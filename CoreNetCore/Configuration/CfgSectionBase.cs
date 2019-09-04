@@ -51,7 +51,7 @@ namespace CoreNetCore.Configuration
             }
             if (ValidateErrors.Any())
             {
-                throw new CoreException($"Config section {sectionName} has any errors!");
+                throw new CoreException($"Config section [{sectionName}] has any errors!");
             }
         }
     }

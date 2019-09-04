@@ -62,23 +62,23 @@ namespace CoreNetCore.MQ
             }
         }
 
-        public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, Action<CallbackMessageEventArgs<object>> callback, MessageEntryParam parameters)
+        public Task<DataArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, string queryData, Action<DataArgs<string>> callback, MessageEntryParam parameters)
         {
             return RequestAsync(serviceName, exchangeType, queryName, queryData, null, null, callback, parameters);
         }
 
-        public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, object responseHandlerData, MessageEntryParam parameters)
-        {
-            var responseHandlerDataStr = responseHandlerData?.ToJson(true);
-            return RequestAsync(serviceName, exchangeType, queryName, queryData, responceHandlerName, responseHandlerDataStr, null, parameters);
-        }
+        //public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, object responseHandlerData, MessageEntryParam parameters)
+        //{
+        //    var responseHandlerDataStr = responseHandlerData?.ToJson(true);
+        //    return RequestAsync(serviceName, exchangeType, queryName, queryData, responceHandlerName, responseHandlerDataStr, null, parameters);
+        //}
 
-        public Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, string responseHandlerData, MessageEntryParam parameters)
+        public Task<DataArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, string queryData, string responceHandlerName, string responseHandlerData, MessageEntryParam parameters)
         {
             return RequestAsync(serviceName, exchangeType, queryName, queryData, responceHandlerName, responseHandlerData, null, parameters);
         }
 
-        private Task<CallbackMessageEventArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, object queryData, string responceHandlerName, string responseHandlerData, Action<CallbackMessageEventArgs<object>> callback, MessageEntryParam parameters)
+        private Task<DataArgs<ViaElement>> RequestAsync(string serviceName, string exchangeType, string queryName, string queryData, string responceHandlerName, string responseHandlerData, Action<DataArgs<string>> callback, MessageEntryParam parameters)
         {
             var responseResolve = parameters?.NeedResponseResolve ?? false;
 
@@ -143,7 +143,7 @@ namespace CoreNetCore.MQ
                     {
                         if (result.Exception != null)
                         {
-                            callback(new CallbackMessageEventArgs<object>(result.Exception));
+                            callback(new DataArgs<string>(result.Exception));
                         }
                         else
                         {
@@ -154,9 +154,69 @@ namespace CoreNetCore.MQ
                 });
         }
 
-        public Task<CallbackMessageEventArgs<ViaElement>> Push(ViaElement via, bool requestResolve, string link, string service, string exchangeName, string routingKey, string exchangeType, object queryData, IBasicProperties properties)
+        public void ResponseOk<T>(T data) where T : class
         {
-            CallbackMessageEventArgs<ViaElement> messageEventArgs = new CallbackMessageEventArgs<ViaElement>();
+            var dataArgs = new DataArgs<T>(data);
+            var data_str = dataArgs.ToJson(true);
+            Response(data_str);
+        }
+
+        public void ResponseError(Exception ex)
+        {
+            var dataArgs = new DataArgs<object>(ex);
+            var data_str = dataArgs.ToJson(true);
+            Response(data_str);
+        }
+
+        private Task<DataArgs<ViaElement>> Response(string data)
+        {
+            var lastVia = via?.GetLast();
+            if (lastVia == null)
+            {
+                throw new CoreException("Responce message error:  via element is null");
+            }
+
+            var properties = Dispatcher.Connection.CreateChannelProperties();
+            properties.CorrelationId = ReceivedMessage?.Properties?.CorrelationId;
+            properties.ContentType = lastVia.queryHandlerName;
+            properties.MessageId = lastVia.messageId;
+            properties.Priority = lastVia.priority == 0 ? (byte)1 : lastVia.priority;
+            properties.Type = lastVia.mqWorkKind;
+            properties.Headers = new Dictionary<string, object>();
+            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA, this.via.ToJson());
+            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.DIRECTION, MessageBasicPropertiesHeaders.DIRECTION_VALUE_RESPONSE);
+            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND, null);
+            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA_TYPE, MessageBasicPropertiesHeaders.VIA_TYPE_VALUE);
+
+            var link = LinkTypes.GetLinkByExchangeType(lastVia.mqWorkKind);
+
+            var routeKey = string.Empty;
+            switch (lastVia.mqWorkKind)
+            {
+                case ExchangeType.Fanout: routeKey = lastVia.replyTo; break;
+                case ExchangeType.Direct: routeKey = lastVia.appId; break;
+                case ExchangeType.Topic: routeKey = lastVia.routeKey; break;
+            }
+
+            var exchange = lastVia.mqWorkKind == ExchangeType.Fanout ? string.Empty : lastVia.replyTo;
+            var doResolve = lastVia.doResolve;
+
+            return Push(lastVia, doResolve, link, lastVia.replyTo, exchange, routeKey, lastVia.mqWorkKind, data, properties)
+                .ContinueWith((res) =>
+                {
+                    if (res.Exception != null)
+                    {
+                        ReceivedMessage?.Nask(false);
+                        throw res.Exception;
+                    }
+                    ReceivedMessage?.Ask();
+                    return res.Result;
+                });
+        }
+
+        private Task<DataArgs<ViaElement>> Push(ViaElement via, bool requestResolve, string link, string service, string exchangeName, string routingKey, string exchangeType, string queryData, IBasicProperties properties)
+        {
+            DataArgs<ViaElement> messageEventArgs = new DataArgs<ViaElement>();
 
             if (requestResolve)
             {
@@ -168,7 +228,6 @@ namespace CoreNetCore.MQ
                           {
                               if (resolver_link.Exception != null)
                               {
-                                  messageEventArgs.IsSuccess = false;
                                   messageEventArgs.SetException(resolver_link.Exception);
                               }
                               var link_str = resolver_link.Result;
@@ -184,15 +243,14 @@ namespace CoreNetCore.MQ
                                       Type = exchangeType ?? ExchangeTypes.EXCHANGETYPE_FANOUT
                                   }
                               };
-                              var data = Encoding.UTF8.GetBytes(queryData.ToJson(true));
-
+                              var data = Encoding.UTF8.GetBytes(queryData);
+                              //посылаем сообщение
                               Dispatcher.Connection.Publish(options, data, properties);
-                              messageEventArgs.IsSuccess = true;
-                              messageEventArgs.Result = via;
+                              messageEventArgs.result = true;
+                              messageEventArgs.data = via;
                           }
                           catch (Exception ex)
                           {
-                              messageEventArgs.IsSuccess = false;
                               messageEventArgs.SetException(ex);
                           }
                           return messageEventArgs;
@@ -214,13 +272,13 @@ namespace CoreNetCore.MQ
                                 Type = exchangeType ?? ExchangeTypes.EXCHANGETYPE_FANOUT
                             }
                         };
-                        var data = Encoding.UTF8.GetBytes(queryData.ToJson(true));
-
+                        var data = Encoding.UTF8.GetBytes(queryData);
+                        //посылаем сообщение
                         Dispatcher.Connection.Publish(options, data, properties);
                     }
                     catch (Exception ex)
                     {
-                        messageEventArgs.IsSuccess = false;
+                        messageEventArgs.result = false;
                         messageEventArgs.SetException(ex);
                     }
                     return messageEventArgs;
