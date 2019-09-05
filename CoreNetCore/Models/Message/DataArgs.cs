@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace CoreNetCore.Models
 {
-    public class DataArgs<T> where T : class
+    public class DataArgs<T> 
     {
         public bool result { get; set; }
 
@@ -32,7 +32,7 @@ namespace CoreNetCore.Models
         {
             SetException(ex);
             result = false;
-            data = null;
+            data = default(T);
         }
 
         public void SetException(Exception ex)

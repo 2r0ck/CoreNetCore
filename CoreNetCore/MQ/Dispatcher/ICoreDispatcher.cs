@@ -15,7 +15,7 @@ namespace CoreNetCore.MQ
 
         bool DeclareResponseHandler(string actionName, Action<MessageEntry, string> handler);
 
-        bool DeclareResponseCallback(string messageId, Action<DataArgs<string>> callback,int? timeout);
+        bool DeclareResponseCallback(string messageId, Action<string> callback,int? timeout);
         event Action<string> Started;
 
         string SelfServiceName { get; }

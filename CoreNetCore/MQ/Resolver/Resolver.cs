@@ -147,7 +147,8 @@ namespace CoreNetCore.MQ
 
         public async Task<string> Resolve(string service, string type)
         {
-            var nsv = Regex.Split(service, @"/([A-Za-z0-9-\._]{1,100}?):([A-Za-z0-9:\.-_]{1,100}?):([0-9]{1,9}?)/");
+            //var nsv = Regex.Split(service, @"/([A-Za-z0-9-\._]{1,100}?):([A-Za-z0-9:\.-_]{1,100}?):([0-9]{1,9}?)/");
+            var nsv = service?.Split(':');
             if (nsv == null || nsv.Length < 3)
             {
                 throw new CoreException("Resolver: could not parse service name");

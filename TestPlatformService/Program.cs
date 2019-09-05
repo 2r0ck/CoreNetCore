@@ -1,76 +1,25 @@
 ﻿using CoreNetCore;
 using CoreNetCore.Models;
+using CoreNetCore.MQ;
+using CoreNetCore.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace TestPlatformService
 {
     internal class Program
     {
-        private static  void Main(string[] args)
+        private static void Main(string[] args)
         {
-
-           
-
-
             Stream myFile = File.Create("TestPlatformServiceLog.txt");
 
             TextWriterTraceListener myTextListener = new
                CustomTrace(myFile);
             Trace.Listeners.Add(myTextListener);
-            ////myTextListener.TraceOutputOptions = TraceOptions.DateTime;
 
             Trace.AutoFlush = true;
-
-            //var hostBuilder = new CoreHostBuilder();
-
-            //var host = hostBuilder
-            //           .ConfigureServices((builderContext, services) =>
-            //           {
-            //               services.AddScoped<IPlatformService, AnswerService1>();
-            //           }
-            //           )
-            //           .Build();
-
-            //TODO
-            //host.DeclareRS();
-            //host.DeclareRQ();
-            //host.Create();
-            //host.StartAsync();
-
-            //hostBuilder.RunPlatformService(new[] { "serviceConsoleApp1", "serviceConsoleApp2", "Query1" });
-
-            //var hel = host.Services.GetService<IHealthcheck>();
-            //hel.StartAsync();
-
-            //Console.ReadLine();
-
-            //hel.AddCheck(() => false);
-            //Console.WriteLine("Press key to exit..");
-            //Console.ReadLine();
-
-            //var hostBuilder = new CoreHostBuilder();
-            //var host = hostBuilder.Build();
-
-            //var hs = host.Services.GetService<IHealthcheck>();
-            //hs.StartAsync();
-
-            //Console.WriteLine("Press key to exit..");
-            //Console.ReadLine();
-
-            //var hostBuilder = new CoreHostBuilder();
-
-            //var host = hostBuilder
-            //           .ConfigureServices((builderContext, services) =>
-            //           {
-            //               services.AddScoped<IPlatformService, TestService>();
-            //           }
-            //           )
-            //           .Build();
-            //host.GetService<IPlatformService>().Run();
 
             var hostBuilder = new CoreHostBuilder();
 
@@ -82,28 +31,88 @@ namespace TestPlatformService
                        )
                        .Build();
 
+            host.DeclareQueryHandler("ping", pingHandler);
 
+            host.DeclareResponseHandler("res:ping", responsePingHandler);
 
-
-            host.StartAsync().ContinueWith(res => {
+            host.StartAsync().ContinueWith(res =>
+            {
                 if (res.Exception != null)
                 {
-                    Console.WriteLine(res.Exception.ToString());
+                    Console.WriteLine(res.Exception);
                 }
                 else
                 {
                     Console.WriteLine("App STARTED!");
                 }
+
+                var data = new MyType1()
+                {
+                    MyProperty = 1,
+                    MyProperty2 = "ping"
+                };
+
+                var data_res = new
+                {
+                    MyProperty = 2,
+                    MyProperty2 = "value response"
+                };
+
+                //request1
+                Console.WriteLine("send request1..");
+                host.CreateMessage().RequestAsync(
+                    "platserv:appnetcore:1",
+                    ExchangeTypes.EXCHANGETYPE_FANOUT,
+                    "ping",
+                    new DataArgs<MyType1>(data),
+
+                    "res:ping",
+                    data_res.ToJson(),
+
+                    null)
+                    .ContinueWith(result =>
+                {
+                    if (result.Exception != null)
+                    {
+                        Console.WriteLine(result.Exception);
+                    }
+                    else
+                    {
+                        Console.WriteLine("request1 send successfully");
+                    }
+                });
+
+
+                var data2 = new MyType1()
+                {
+                    MyProperty = 2,
+                    MyProperty2 = "PING"
+                };
+
+                //request2
+                Console.WriteLine("send request2..");
+                host.CreateMessage().RequestAsync(
+                    "platserv:appnetcore:1",
+                    ExchangeTypes.EXCHANGETYPE_FANOUT,
+                    "ping",
+                    new DataArgs<MyType1>(data2),
+                    (result) =>
+                    {
+                        Console.WriteLine($"Callback Handler  Data:[{result.ToJson()}]");
+                        Console.WriteLine("profit-2");
+                    }, null)
+                        .ContinueWith(result =>
+                        {
+                            if (result.Exception != null)
+                            {
+                                Console.WriteLine(result.Exception);
+                            }
+                            else
+                            {
+                                Console.WriteLine("request2 send successfully");
+                            }
+                        });
             });
-            // var serv = host.GetService<IPlatformService>();
-
-            //serv.Run();
-
-            // NewMethod();
-            //for (int i = 0; i < 100000; i++)
-            // {
-            // new SubscriberFabric().Test();
-            //  }
 
             Console.WriteLine("Press key to exit..");
             Console.ReadLine();
@@ -111,75 +120,24 @@ namespace TestPlatformService
             host.StopAsync();
         }
 
-        private static async void NewMethod()
+        private static void responsePingHandler(MessageEntry arg1, string arg2)
         {
-            try
-            {
-                ////var t = await Task.Run(() => { throw new Exception("lalal"); return 1; }).ContinueWith(res => { return res.Result; });
-                //return Push1().ContinueWith(res => {
-                //    if (res.Exception != null)
-                //    {
-                //    }
-
-                //    return res.Result;
-
-                //});
-                var c = await Push1();
-                Console.WriteLine(c.data);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            Console.WriteLine($"Response Handler by Context:[{arg2.FromJson<MyType1>().ToJson()}]; Data:[{arg1.ReceivedMessage.GetMessageData<DataArgs<string>>().ToJson()}]");
+            Console.WriteLine("profit-1");
         }
 
-        public static Task<DataArgs<object>> Push1()
+        private static void pingHandler(MessageEntry obj)
         {
-            //throw new Exception("lalalal3");
-            //return await Push2();
-
-            return Push2().ContinueWith((res) =>
-            {
-                //if (res.Exception != null)
-                //{
-                //    throw res.Exception;
-                //}
-
-                // throw new Exception("lalalal3");
-                return res.Result;
-            });
+            var data = obj.ReceivedMessage.GetMessageData<DataArgs<MyType1>>();
+            Console.WriteLine("Request Handler Data->" + data.ToJson());
+             
+            obj.ResponseOk(new DataArgs<string>(data.data.MyProperty2+data.data.MyProperty));
         }
 
-        public static Task<DataArgs<object>> Push2()
+        private class MyType1
         {
-            //throw new Exception("lalalal3");
-            //return await Push2();
-
-            return Push3().ContinueWith((res) =>
-            {
-                //if (res.Exception != null)
-                //{
-                //    throw res.Exception;
-                //}
-
-                // throw new Exception("lalalal3");
-                return res.Result;
-            });
-        }
-
-        public static Task<DataArgs<object>> Push3()
-        {
-            TaskCompletionSource<DataArgs<object>> tcs = new TaskCompletionSource<DataArgs<object>>();
-            try
-            {
-                throw new Exception("lalalal2");
-            }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
-
-            return tcs.Task;
+            public int MyProperty { get; set; }
+            public string MyProperty2 { get; set; }
         }
     }
 }

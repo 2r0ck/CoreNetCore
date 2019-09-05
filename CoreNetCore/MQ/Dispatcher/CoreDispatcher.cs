@@ -16,12 +16,12 @@ namespace CoreNetCore.MQ
         private ConcurrentDictionary<string, List<Action<MessageEntry, string>>> responceHandlers = new ConcurrentDictionary<string, List<Action<MessageEntry, string>>>();
 
         //CallbackMessageEventArgs
-        private ConcurrentDictionary<string, List<Action<DataArgs<string>>>> responceCallbacks = new ConcurrentDictionary<string, List<Action<DataArgs<string>>>>();
+        private ConcurrentDictionary<string, List<Action<string>>> responceCallbacks = new ConcurrentDictionary<string, List<Action<string>>>();
 
         public string SelfServiceName => $"{Config.Starter._this._namespace}:{Config.Starter._this.servicename}:{Config.Starter._this.majorversion}";
-        public string ExchangeConnectionString { get; }
+        public string ExchangeConnectionString { get;  private set;}
 
-        public string QueueConnectionString { get; }
+        public string QueueConnectionString { get; private set; }
 
         public IPrepareConfigService Config { get; }
 
@@ -71,6 +71,7 @@ namespace CoreNetCore.MQ
                     {
                         case LinkTypes.LINK_EXCHANGE:
                             {
+                                ExchangeConnectionString = exchangeName;
                                 options.QueueParam.Name = $"{exchangeName}.{AppId}";
                                 options.ExchangeParam = new ChannelExchangeParam()
                                 {
@@ -83,6 +84,7 @@ namespace CoreNetCore.MQ
 
                         case LinkTypes.LINK_QUEUE:
                             {
+                                QueueConnectionString = exchangeName;
                                 options.QueueParam.Name = exchangeName;
                             }
                             break;
@@ -90,7 +92,9 @@ namespace CoreNetCore.MQ
                         default: { Trace.TraceWarning($"Unknow link type: [{link.type}]"); continue; }
                     }
 
-                    Connection.Listen(options, (ea) => { this.HandleMessage(ea); });
+                    Connection.Listen(options, (ea) => {
+                        this.HandleMessage(ea);
+                    });
 
                     Trace.TraceInformation($"Bind {exchangeName} successed");
                     queueInc--;
@@ -129,7 +133,23 @@ namespace CoreNetCore.MQ
                 }
                 else
                 {
-                    currentMsg.ResponseError(new CoreException($"Handler [{methodName}] not declared for this service"));
+
+                    if (currentMsg.IsViaValidForResponse())
+                    {
+                        currentMsg.ResponseError(new CoreException($"Handler [{methodName}] not declared for this service"))
+                       .ContinueWith((res) =>
+                       {
+                           if (res.Exception != null)
+                           {
+                               Trace.TraceError(res.Exception.ToString());
+                           }
+                       });
+                    }
+                    else
+                    {
+                        Trace.TraceError($"Handler[{ methodName}] not declared for this service");
+                    }
+                   
                 }
             }
             else
@@ -141,13 +161,13 @@ namespace CoreNetCore.MQ
                     if (!string.IsNullOrEmpty(ea.Properties?.MessageId))
                     {
                         //todo: callbacks timeout
-                        List<Action<DataArgs<string>>> callbacks;
+                        List<Action<string>> callbacks;
                         if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callbacks) && callbacks!=null)
                         {
                             var data = Encoding.UTF8.GetString(ea.Content);
                             foreach (var cb in callbacks)
                             {
-                                cb(new DataArgs<string>(data));
+                                cb(data);
                             }                           
                         }
                     }
@@ -156,8 +176,7 @@ namespace CoreNetCore.MQ
                     {
                         List<Action<MessageEntry, string>> handlers;
                         if (responceHandlers.TryGetValue(last_via.responseHandlerName, out handlers) && handlers!=null)
-                        {
-                            var data = Encoding.UTF8.GetString(ea.Content);
+                        {                            
                             foreach (var action in handlers)
                             {
                                 action(currentMsg, last_via.responseHandlerData);
@@ -203,20 +222,20 @@ namespace CoreNetCore.MQ
         }
 
         //todo: timeout not implement
-        public bool DeclareResponseCallback(string messageId, Action<DataArgs<string>> callback, int? timeout)
+        public bool DeclareResponseCallback(string messageId, Action<string> callback, int? timeout)
         {
             if (callback == null)
             {
                 throw new CoreException("Callback is null");
             }
             Trace.TraceInformation($"Declare response callback. MessageId={messageId}");
-            List<Action<DataArgs<string>>> handlers = null;
+            List<Action<string>> handlers = null;
             if (responceCallbacks.TryGetValue(messageId, out handlers))
             {
                 handlers.Add(callback);
                 return true;
             }
-            return responceCallbacks.TryAdd(messageId, new List<Action<DataArgs<string>>> { callback });
+            return responceCallbacks.TryAdd(messageId, new List<Action<string>> { callback });
         }
 
         public string GetConnectionByExchangeType(string exchangeKind)

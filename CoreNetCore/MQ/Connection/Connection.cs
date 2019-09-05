@@ -5,8 +5,8 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Diagnostics;
+using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
 {
@@ -83,10 +83,10 @@ namespace CoreNetCore.MQ
                 Trace.TraceWarning(string.Format(warn, "mq:prefetch"));
             }
 
-            default_durable = configuration.GetBooleanValue("mq:durable")??false;
+            default_durable = configuration.GetBooleanValue("mq:durable") ?? false;
 
             host = configuration.GetStrValue("mq:host:host", true);
-            
+
             username = configuration.GetStrValue("mq:host:mserv:username", true);
             password = configuration.GetStrValue("mq:host:mserv:password", true);
         }
@@ -179,57 +179,79 @@ namespace CoreNetCore.MQ
         /// <returns></returns>
         public string Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback)
         {
-            //TODO: expires param mq.queue.ttl mq.bind.ttl 
+            //TODO: expires param mq.queue.ttl mq.bind.ttl
             //return Task.Run(() =>
             //{
             //    try
             //    {
-                    if (cparam?.QueueParam == null)
+            if (cparam?.QueueParam == null)
+            {
+                throw new CoreException("QueueParam not declared");
+            }
+
+            channel.QueueDeclare(cparam.QueueParam.Name,
+                cparam.QueueParam.Durable,
+                cparam.QueueParam.Exclusive,
+                cparam.QueueParam.AutoDelete,
+                cparam.QueueParam.Arguments);
+            //Queue declare
+            Trace.TraceInformation($"Declare queue [{cparam.QueueParam.Name}]. Options: {cparam.QueueParam.ToJson()}");
+
+            if (cparam.ExchangeParam != null)
+            {
+                channel.ExchangeDeclare(cparam.ExchangeParam.Name,
+                                       cparam.ExchangeParam.Type ?? ExchangeTypes.EXCHANGETYPE_DIRECT,
+                                       cparam.ExchangeParam.Durable ?? default_durable,
+                                       cparam.ExchangeParam.AutoDelete,
+                                       cparam.ExchangeParam.Arguments);
+
+                //Exchange declare
+                Trace.TraceInformation($"Bind queue [{cparam.QueueParam.Name}] to exchange [{cparam.ExchangeParam.Name}({cparam.ExchangeParam.Type})]. AppId=[{AppId.CurrentUID}] ");
+
+                //Bind queue and exchange
+                channel.QueueBind(cparam.QueueParam.Name, cparam.ExchangeParam.Name, AppId.CurrentUID);
+            }
+            //create consumer and subscribe
+
+            var consumer = new EventingBasicConsumer(channel);
+            if (!string.IsNullOrEmpty(cparam.ConsumerTag))
+            {
+                consumer.ConsumerTag = consumer.ConsumerTag;
+            }
+            consumer.Received += (model, ea) =>
+            {
+                if (callback != null)
+                {
+                    //TODO:  Ask Nask with try-catch? check if throw exception
+                    var msg = new ReceivedMessageEventArgs(ea,
+                    () =>
                     {
-                        throw new CoreException("QueueParam not declared");
-                    }
-
-                    channel.QueueDeclare(cparam.QueueParam.Name,
-                        cparam.QueueParam.Durable,
-                        cparam.QueueParam.Exclusive,
-                        cparam.QueueParam.AutoDelete,
-                        cparam.QueueParam.Arguments);
-                    //Queue declare
-                    Trace.TraceInformation($"Declare queue [{cparam.QueueParam.Name}]. Options: {cparam.QueueParam.ToJson()}");
-
-                    if (cparam.ExchangeParam != null)
-                    {
-                        channel.ExchangeDeclare(cparam.ExchangeParam.Name,
-                                               cparam.ExchangeParam.Type ?? ExchangeTypes.EXCHANGETYPE_DIRECT,
-                                               cparam.ExchangeParam.Durable?? default_durable,
-                                               cparam.ExchangeParam.AutoDelete,
-                                               cparam.ExchangeParam.Arguments);
-
-                        //Exchange declare
-                        Trace.TraceInformation($"Bind queue [{cparam.QueueParam.Name}] to exchange [{cparam.ExchangeParam.Name}({cparam.ExchangeParam.Type})]. AppId=[{AppId.CurrentUID}] ");
-
-                        //Bind queue and exchange
-                        channel.QueueBind(cparam.QueueParam.Name, cparam.ExchangeParam.Name, AppId.CurrentUID);
-                    }
-                    //create consumer and subscribe
-
-                    var consumer = new EventingBasicConsumer(channel);
-                    if (!string.IsNullOrEmpty(cparam.ConsumerTag))
-                    {
-                        consumer.ConsumerTag = consumer.ConsumerTag;
-                    }
-                    consumer.Received += (model, ea) =>
-                    {
-                        if (callback != null)
+                        try
                         {
-                            //TODO:  Ask Nask with try-catch? check if throw exception 
-                            var msg = new ReceivedMessageEventArgs(ea,
-                                    () => channel.BasicAck(ea.DeliveryTag, multiple: false),
-                                    (autoRepit) => channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit));
-                            callback.Invoke(msg);
+                            channel.BasicAck(ea.DeliveryTag, multiple: false);
                         }
-                    };
-                    return channel.BasicConsume(cparam.QueueParam.Name, cparam.AutoAck, consumer);
+                        catch (Exception ex)
+                        {
+                            Trace.TraceWarning($"Ask error:{ex}");
+                        }
+                    },
+                    (autoRepit) =>
+                    {
+                        try
+                        {
+                            channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit);
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.TraceWarning($"Nask error:{ex}");
+                        }
+                    });
+
+                    callback.Invoke(msg);
+                }
+            };
+
+            return channel.BasicConsume(cparam.QueueParam.Name, cparam.AutoAck, consumer);
             //    }
             //    catch (Exception ex)
             //    {
@@ -270,14 +292,17 @@ namespace CoreNetCore.MQ
                     //Exchange declare
                     channel.ExchangeDeclare(pparam.ExchangeParam.Name,
                         pparam.ExchangeParam.Type,
-                        pparam.ExchangeParam.Durable?? default_durable,
+                        pparam.ExchangeParam.Durable ?? default_durable,
                         pparam.ExchangeParam.AutoDelete,
                         pparam.ExchangeParam.Arguments);
                 }
-                channel.BasicPublish(exchange: pparam?.ExchangeParam?.Name,
-                    routingKey: pparam?.RoutingKey??"",
-                    basicProperties: customProperties,
-                    body: content);
+
+                channel.BasicPublish(exchange: pparam?.ExchangeParam?.Name??"",
+                routingKey: pparam?.RoutingKey ?? "",
+                basicProperties: customProperties,
+                body: content);
+
+                //Trace.TraceInformation($"PUBLISH exchange:{ pparam?.ExchangeParam?.Name},routingKey:{pparam?.RoutingKey}, data:{Encoding.UTF8.GetString(content)}");
             }
             catch (Exception ex)
             {
@@ -285,15 +310,12 @@ namespace CoreNetCore.MQ
             }
         }
 
-       
-
         private void Connection_ConnectionShutdown(object sender, ShutdownEventArgs e)
         {
             Trace.TraceWarning($"MQ Disconnected. ReplyCode = {e.ReplyCode}; ReplyText: {e.ReplyText}");
             Disconnected?.Invoke(AppId.CurrentUID);
             Start();
         }
-
 
         public IBasicProperties CreateChannelProperties()
         {

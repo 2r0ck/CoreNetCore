@@ -51,7 +51,7 @@ namespace CoreNetCore.Utils
             return null;
         }
 
-        public static string ToJson<T>(this T obj,bool assert=false) where T : class
+        public static string ToJson<T>(this T obj,bool assert=false) 
         {
             try
             {
@@ -69,11 +69,11 @@ namespace CoreNetCore.Utils
             }
         }
 
-        public static T FromJson<T>(this string str, bool assert = false) where T : class
+        public static T FromJson<T>(this string str, bool assert = false) 
         {
             try
             {
-                if (str == null) return null;
+                if (str == null) return default(T);
                 return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(str);
             }
             catch (Exception ex)
@@ -83,7 +83,7 @@ namespace CoreNetCore.Utils
                 {
                     throw new CoreException(msg, ex);
                 }
-                return null;
+                return default(T); 
             }
         }
     }

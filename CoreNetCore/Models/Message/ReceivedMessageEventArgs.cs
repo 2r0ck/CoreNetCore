@@ -2,6 +2,7 @@
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
+using System.Text;
 
 namespace CoreNetCore.Models
 {
@@ -18,6 +19,8 @@ namespace CoreNetCore.Models
         /// Содержание сообщения
         /// </summary>
         public byte[] Content => Info?.Body;
+
+       
 
         /// <summary>
         /// Сообщение об удачной обработке сообщения
@@ -52,6 +55,10 @@ namespace CoreNetCore.Models
             object result = null;
             if (Properties?.Headers?.TryGetValue(headerKey, out result) ?? false)
             {
+                if(result is byte[])
+                {
+                    return Encoding.UTF8.GetString((byte[])result);
+                }
                 return result?.ToString();
             }
             return null;
@@ -61,6 +68,17 @@ namespace CoreNetCore.Models
         {
             var viaHeaderStr = GetHeaderValue(MessageBasicPropertiesHeaders.VIA);
             return viaHeaderStr.FromJson<ViaContainer>();
+        }
+
+        public T GetMessageData<T>() where T:class
+        {
+            if (Content != null)
+            {
+                var data_str = Encoding.UTF8.GetString(Content);
+                return data_str.FromJson<T>();
+            }
+
+            return null;
         }
     }
 

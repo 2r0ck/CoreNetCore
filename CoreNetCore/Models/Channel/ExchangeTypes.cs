@@ -25,7 +25,7 @@ namespace CoreNetCore.Models
 
         public static string Get(string str,bool assert =false)
         {
-            switch (str.Trim().ToLowerInvariant())
+            switch (str?.Trim().ToLowerInvariant())
             {
                 case EXCHANGETYPE_DIRECT: return EXCHANGETYPE_DIRECT;
                 case EXCHANGETYPE_FANOUT: return EXCHANGETYPE_FANOUT;
