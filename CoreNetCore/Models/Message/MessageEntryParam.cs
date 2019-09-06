@@ -17,6 +17,9 @@ namespace CoreNetCore.Models
 
         public string AppId { get; set; }
 
+        /// <summary>
+        /// Timeout (Only for callback handlers)
+        /// </summary>
         public int? Timeout { get; set; }
     }
 }

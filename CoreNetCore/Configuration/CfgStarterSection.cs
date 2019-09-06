@@ -13,6 +13,8 @@ namespace CoreNetCore.Configuration
         public int? pingperiod_ms { get; set; }
         public int? cache_renew_period_ms { get; set; }
 
+        public int? registerselftimeout { get; set; }
+
         private CfgThis This { get; set; }
 
         public CfgThis _this => This;

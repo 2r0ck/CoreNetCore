@@ -1,5 +1,6 @@
 ﻿using CoreNetCore.Configuration;
 using CoreNetCore.Models;
+using CoreNetCore.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ namespace CoreNetCore.MQ
         private ConcurrentDictionary<string, List<Action<MessageEntry, string>>> responceHandlers = new ConcurrentDictionary<string, List<Action<MessageEntry, string>>>();
 
         //CallbackMessageEventArgs
-        private ConcurrentDictionary<string, List<Action<string>>> responceCallbacks = new ConcurrentDictionary<string, List<Action<string>>>();
+        private ConcurrentDictionary<string, Action<string>> responceCallbacks = new ConcurrentDictionary<string, Action<string>>();
 
         public string SelfServiceName => $"{Config.Starter._this._namespace}:{Config.Starter._this.servicename}:{Config.Starter._this.majorversion}";
         public string ExchangeConnectionString { get;  private set;}
@@ -46,10 +47,19 @@ namespace CoreNetCore.MQ
 
         private void Resolver_Started(string obj)
         {
-            //TODO: Self resolving timeout, exiting ...
+           
             Trace.TraceInformation("Resolver started");
 
-            var links = Resolver.RegisterSelf().Result;
+            //Self resolving timeout, exiting ...
+            int timeout = Config.Starter.registerselftimeout??10000;
+            var register = Resolver.RegisterSelf();
+            if ( Task.WhenAny(register,Task.Delay(timeout)).Result != register)
+            {                
+                throw new CoreException("Resolver self register timeout expired!");
+            }
+
+
+            var links = register.Result;
             Trace.TraceInformation("Self links resolved");
 
             int queueInc = 2;
@@ -161,14 +171,16 @@ namespace CoreNetCore.MQ
                     if (!string.IsNullOrEmpty(ea.Properties?.MessageId))
                     {
                         //todo: callbacks timeout
-                        List<Action<string>> callbacks;
-                        if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callbacks) && callbacks!=null)
+                        Action<string> callback;
+                        if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callback) && callback!=null)
                         {
                             var data = Encoding.UTF8.GetString(ea.Content);
-                            foreach (var cb in callbacks)
-                            {
-                                cb(data);
-                            }                           
+                            callback(data);
+                            //var data = Encoding.UTF8.GetString(ea.Content);
+                            //foreach (var cb in callbacks)
+                            //{
+                            //    cb(data);
+                            //}                           
                         }
                     }
                     //resp handlers
@@ -224,18 +236,46 @@ namespace CoreNetCore.MQ
         //todo: timeout not implement
         public bool DeclareResponseCallback(string messageId, Action<string> callback, int? timeout)
         {
-            if (callback == null)
-            {
-                throw new CoreException("Callback is null");
-            }
-            Trace.TraceInformation($"Declare response callback. MessageId={messageId}");
-            List<Action<string>> handlers = null;
-            if (responceCallbacks.TryGetValue(messageId, out handlers))
-            {
-                handlers.Add(callback);
+            bool success = true;
+            try
+            {               
+                if (callback == null)
+                {
+                    throw new CoreException("Callback is null");
+                }
+                Trace.TraceInformation($"Declare response callback. MessageId={messageId}");                
+                responceCallbacks.AddOrUpdate(messageId, callback, (k, v) => callback);
                 return true;
+                //ConcurrentStack<Action<string>> handlers = null;
+                //if (responceCallbacks.TryGetValue(messageId, out handlers))
+                //{
+                //    handlers.Push(callback);
+                //    return true;
+                //}
+                //handlers = new ConcurrentStack<Action<string>>();
+                //handlers.Push(callback);
+                //return responceCallbacks.TryAdd(messageId, handlers);
             }
-            return responceCallbacks.TryAdd(messageId, new List<Action<string>> { callback });
+            catch(Exception ex)
+            {
+                success = false;
+                throw ex;
+            }
+            finally
+            {
+                if(success && timeout.HasValue)
+                {
+                    Task.Delay(timeout.Value).ContinueWith(res => {
+
+                        Action<string> cb;
+                        if (responceCallbacks.TryRemove(messageId, out cb) && cb != null)
+                        {
+                            var errContext = new DataArgs<object>(new CoreException($"Callback timeout expired. MessageId=[{messageId}]"));
+                            callback(errContext.ToJson());                                                  
+                        }
+                    });
+                }
+            }
         }
 
         public string GetConnectionByExchangeType(string exchangeKind)

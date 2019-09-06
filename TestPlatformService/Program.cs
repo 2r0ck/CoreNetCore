@@ -11,6 +11,12 @@ namespace TestPlatformService
 {
     internal class Program
     {
+        private static void Main0(string[] args)
+        {
+
+
+        }
+
         private static void Main(string[] args)
         {
             Stream myFile = File.Create("TestPlatformServiceLog.txt");
@@ -40,6 +46,7 @@ namespace TestPlatformService
                 if (res.Exception != null)
                 {
                     Console.WriteLine(res.Exception);
+                    Environment.Exit(1);
                 }
                 else
                 {
@@ -80,8 +87,7 @@ namespace TestPlatformService
                     {
                         Console.WriteLine("request1 send successfully");
                     }
-                });
-
+                }).Wait();
 
                 var data2 = new MyType1()
                 {
@@ -98,9 +104,17 @@ namespace TestPlatformService
                     new DataArgs<MyType1>(data2),
                     (result) =>
                     {
-                        Console.WriteLine($"Callback Handler  Data:[{result.ToJson()}]");
-                        Console.WriteLine("profit-2");
-                    }, null)
+                        var obj = result.FromJson<DataArgs<object>>();
+                        if (obj.result == false)
+                        {
+                            Console.WriteLine("Error>>"+obj.error);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Callback Handler  Data:[{result}]");
+                            Console.WriteLine("profit-2");
+                        }
+                    }, new MessageEntryParam() { Timeout = 5000})
                         .ContinueWith(result =>
                         {
                             if (result.Exception != null)
@@ -118,8 +132,10 @@ namespace TestPlatformService
             Console.ReadLine();
 
             host.StopAsync();
+            Console.ReadLine();
         }
 
+    
         private static void responsePingHandler(MessageEntry arg1, string arg2)
         {
             Console.WriteLine($"Response Handler by Context:[{arg2.FromJson<MyType1>().ToJson()}]; Data:[{arg1.ReceivedMessage.GetMessageData<DataArgs<string>>().ToJson()}]");
@@ -130,8 +146,8 @@ namespace TestPlatformService
         {
             var data = obj.ReceivedMessage.GetMessageData<DataArgs<MyType1>>();
             Console.WriteLine("Request Handler Data->" + data.ToJson());
-             
-            obj.ResponseOk(new DataArgs<string>(data.data.MyProperty2+data.data.MyProperty));
+
+            obj.ResponseOk(new DataArgs<string>(data.data.MyProperty2 + data.data.MyProperty));
         }
 
         private class MyType1

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Runtime.Serialization;
 
 namespace CoreNetCore.Models
 {
@@ -9,10 +10,10 @@ namespace CoreNetCore.Models
     {
         public bool result { get; set; }
 
-        public string error => ExceptionQueue != null ? string.Join("; ", ExceptionQueue.Select(x => x.Message)) : null;
+        public string error { get;  set; }
 
         [JsonIgnore]
-        private ConcurrentQueue<Exception> ExceptionQueue;
+        public ConcurrentQueue<Exception> ExceptionQueue { get; private set; }
      
 
         public T data { get; set; }
@@ -59,6 +60,12 @@ namespace CoreNetCore.Models
                 ExceptionQueue = new ConcurrentQueue<Exception>();
             }
             ExceptionQueue.Enqueue(ex);
+        }
+
+        [OnSerializing]
+        internal void OnSerializingMethod(StreamingContext context)
+        {
+           error = ExceptionQueue != null ? string.Join("; ", ExceptionQueue.Select(x => x.Message)) : null;
         }
     }
 }

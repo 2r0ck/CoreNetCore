@@ -314,18 +314,24 @@ namespace CoreNetCore.MQ
         {
             Trace.TraceWarning($"MQ Disconnected. ReplyCode = {e.ReplyCode}; ReplyText: {e.ReplyText}");
             Disconnected?.Invoke(AppId.CurrentUID);
-            Start();
+            if (!_disposing)
+            {
+                Start();
+            }
         }
 
         public IBasicProperties CreateChannelProperties()
         {
             return channel.CreateBasicProperties();
         }
-
+        bool _disposing = false;
         public void Dispose()
         {
+            _disposing = true;
             try
             {
+             
+
                 if (channel != null)
                 {
                     Trace.TraceInformation($"MQ Channel closing. [{AppId.CurrentUID}]");
@@ -344,8 +350,9 @@ namespace CoreNetCore.MQ
                 if (connection != null)
                 {
                     Trace.TraceInformation($"MQ Connection closing..[{AppId.CurrentUID}]");
-                    connection.ConnectionShutdown -= Connection_ConnectionShutdown;
+                   
                     connection.Close();
+                    connection.ConnectionShutdown -= Connection_ConnectionShutdown;
                     connection.Dispose();
                 }
             }
