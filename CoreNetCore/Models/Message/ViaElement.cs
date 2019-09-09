@@ -38,7 +38,7 @@ namespace CoreNetCore.Models
         public string responseHandlerName { get; set; }
 
         [JsonProperty("context")]
-        public string responseHandlerData { get; set; }
+        public object responseHandlerData { get; set; }
 
     }
 }

@@ -1,4 +1,5 @@
 ﻿using CoreNetCore;
+using CoreNetCore.Configuration;
 using CoreNetCore.MQ;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -11,6 +12,8 @@ namespace CoreNetCoreTest.MQ
     [TestClass]
     public class HealthcheckTest
     {
+
+
         [TestMethod]
         public void HealthcheckTesting1()
         {
@@ -19,19 +22,22 @@ namespace CoreNetCoreTest.MQ
 
             var hs = host.Services.GetService<IHealthcheck>();
             hs.StartAsync();
+            var configService = host.Services.GetService<IPrepareConfigService>();          
+
+            string healthcheckUrl = $"Http://localhost:{configService.MQ.healthcheckPort}/healthcheck";
 
             Thread.Sleep(1000);
 
-            CheckAnwer("Http://localhost:8048/healthcheck", "True");
+            CheckAnwer(healthcheckUrl, "True");
 
             hs.AddCheck(() => true);
-            CheckAnwer("Http://localhost:8048/healthcheck", "True");
+            CheckAnwer(healthcheckUrl, "True");
 
             hs.AddCheck(() => false);
-            CheckAnwer("Http://localhost:8048/healthcheck", "False");
+            CheckAnwer(healthcheckUrl, "False");
 
             hs.AddCheck(() => true);
-            CheckAnwer("Http://localhost:8048/healthcheck", "False");
+            CheckAnwer(healthcheckUrl, "False");
 
             hs.Stop();
         }
@@ -46,6 +52,9 @@ namespace CoreNetCoreTest.MQ
             var hs = host.Services.GetService<IHealthcheck>();
             hs.StartAsync();
 
+            var configService = host.Services.GetService<IPrepareConfigService>();
+
+            string healthcheckUrl = $"Http://localhost:{configService.MQ.healthcheckPort}/healthcheck";
             Thread.Sleep(1000);
 
             int a = 0;
@@ -57,16 +66,16 @@ namespace CoreNetCoreTest.MQ
 
             hs.AddCheck(handler);
 
-            CheckAnwer("Http://localhost:8048/healthcheck", "True");
+            CheckAnwer(healthcheckUrl, "True");
 
             a = 6;
-            CheckAnwer("Http://localhost:8048/healthcheck", "True");
+            CheckAnwer(healthcheckUrl, "True");
 
             a = 13;
-            CheckAnwer("Http://localhost:8048/healthcheck", "False");
+            CheckAnwer(healthcheckUrl, "False");
 
             a = 0;
-            CheckAnwer("Http://localhost:8048/healthcheck", "True");
+            CheckAnwer(healthcheckUrl, "True");
 
             hs.Stop();
         }

@@ -11,10 +11,15 @@ namespace TestPlatformService
 {
     internal class Program
     {
-        private static void Main0(string[] args)
+        private static void Main1(string[] args)
         {
-
-
+            //"{\"queue\":[{\"replyTo\":\"qu.platserv.appnetcore.1.fanout\",\"appId\":\"757b95b6-451b-42c9-9674-4607275746aa\",\"mqWorkKind\":\"fanout\",\"messageId\":\"3c3be247-3cae-4548-8508-f116160cd3b6\",\"type\":\"ping\",\"priority\":0,\"doResolve\":false,\"handlerMethod\":\"res:ping\",\"context\":\"{\\\"MyProperty\\\":2,\\\"MyProperty2\\\":\\\"value response\\\"}\"}]}"
+            var via2 = "{\"queue\":[{\"replyTo\":\"qu.platserv.appnetcore.1.fanout\",\"appId\":\"757b95b6-451b-42c9-9674-4607275746aa\",\"mqWorkKind\":\"fanout\",\"messageId\":\"3c3be247-3cae-4548-8508-f116160cd3b6\",\"type\":\"ping\",\"priority\":0,\"doResolve\":false,\"handlerMethod\":\"res:ping\",\"context\":\"{\\\"MyProperty\\\":2,\\\"MyProperty2\\\":\\\"value response\\\"}\"}]}";
+            var via =  "{\"queue\":[{\"replyTo\":\"qu.grabb.appjs.1.fanout\",\"mqWorkKind\":\"fanout\",\"messageId\":\"aa9c6dcc - 4729 - 4670 - 877b - ba269755c81c\",\"type\":\"ping\",\"priority\":0,\"doResolve\":false,\"handlerMethod\":\"rsp: ping1\",\"context\":{\"var1\":\"1\",\"var2\":2,\"var3\":3}}]}";
+            var via3 = "{\"queue\":[{\"replyTo\":\"qu.grabb.appjs.1.fanout\",\"mqWorkKind\":\"fanout\",\"messageId\":\"aa9c6dcc - 4729 - 4670 - 877b - ba269755c81c\",\"type\":\"ping\",\"priority\":0,\"doResolve\":false,\"handlerMethod\":\"rsp: ping1\"}]}";
+            var data = via.FromJson<ViaContainer>();
+            var data2 = via2.FromJson<ViaContainer>();
+            var data3 = via3.FromJson<ViaContainer>();
         }
 
         private static void Main(string[] args)
@@ -37,9 +42,9 @@ namespace TestPlatformService
                        )
                        .Build();
 
-            host.DeclareQueryHandler("ping", pingHandler);
+            host.DeclareQueryHandler("ping_nc", pingHandler);
 
-            host.DeclareResponseHandler("res:ping", responsePingHandler);
+            host.DeclareResponseHandler("res:ping_nc", responsePingHandler);
 
             host.StartAsync().ContinueWith(res =>
             {
@@ -70,10 +75,10 @@ namespace TestPlatformService
                 host.CreateMessage().RequestAsync(
                     "platserv:appnetcore:1",
                     ExchangeTypes.EXCHANGETYPE_FANOUT,
-                    "ping",
+                    "ping_nc",
                     new DataArgs<MyType1>(data),
 
-                    "res:ping",
+                    "res:ping_nc",
                     data_res.ToJson(),
 
                     null)
@@ -100,21 +105,21 @@ namespace TestPlatformService
                 host.CreateMessage().RequestAsync(
                     "platserv:appnetcore:1",
                     ExchangeTypes.EXCHANGETYPE_FANOUT,
-                    "ping",
+                    "ping_nc",
                     new DataArgs<MyType1>(data2),
                     (result) =>
                     {
                         var obj = result.FromJson<DataArgs<object>>();
                         if (obj.result == false)
                         {
-                            Console.WriteLine("Error>>"+obj.error);
+                            Console.WriteLine("Error>>" + obj.error);
                         }
                         else
                         {
                             Console.WriteLine($"Callback Handler  Data:[{result}]");
                             Console.WriteLine("profit-2");
                         }
-                    }, new MessageEntryParam() { Timeout = 5000})
+                    }, new MessageEntryParam() { Timeout = 5000 })
                         .ContinueWith(result =>
                         {
                             if (result.Exception != null)
@@ -126,6 +131,32 @@ namespace TestPlatformService
                                 Console.WriteLine("request2 send successfully");
                             }
                         });
+
+                ////request3 to core-js service
+                //Console.WriteLine("send request3 to js service..");
+                //host.CreateMessage().RequestAsync(
+                //    "grabb:appjs:1",
+                //    ExchangeTypes.EXCHANGETYPE_FANOUT,
+                //    "ping_js",
+                //    new DataArgs<MyType1>(data2),
+                //    (result) =>
+                //    {
+                      
+                //            Console.WriteLine($"Callback Handler  Data:[{result}]");
+                //            Console.WriteLine("profit-3");
+                       
+                //    }, new MessageEntryParam() { Timeout = 5000 })
+                //        .ContinueWith(result =>
+                //        {
+                //            if (result.Exception != null)
+                //            {
+                //                Console.WriteLine(result.Exception);
+                //            }
+                //            else
+                //            {
+                //                Console.WriteLine("request3 send successfully");
+                //            }
+                //        });
             });
 
             Console.WriteLine("Press key to exit..");
@@ -135,7 +166,6 @@ namespace TestPlatformService
             Console.ReadLine();
         }
 
-    
         private static void responsePingHandler(MessageEntry arg1, string arg2)
         {
             Console.WriteLine($"Response Handler by Context:[{arg2.FromJson<MyType1>().ToJson()}]; Data:[{arg1.ReceivedMessage.GetMessageData<DataArgs<string>>().ToJson()}]");
@@ -144,10 +174,17 @@ namespace TestPlatformService
 
         private static void pingHandler(MessageEntry obj)
         {
-            var data = obj.ReceivedMessage.GetMessageData<DataArgs<MyType1>>();
-            Console.WriteLine("Request Handler Data->" + data.ToJson());
+            try
+            {
+                var data = obj.ReceivedMessage.GetMessageData<DataArgs<MyType1>>();
+                Console.WriteLine("Request Handler Data->" + data.ToJson());
 
-            obj.ResponseOk(new DataArgs<string>(data.data.MyProperty2 + data.data.MyProperty));
+                obj.ResponseOk(new DataArgs<string>(" net core answer:"+data.data.MyProperty2 + data.data.MyProperty));
+            }
+            catch (Exception ex)
+            {
+                obj.ResponseError(ex);
+            }
         }
 
         private class MyType1

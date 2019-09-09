@@ -1,5 +1,6 @@
 ﻿using CoreNetCore.Models;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
@@ -11,5 +12,6 @@ namespace CoreNetCore.MQ
         Task<LinkEntry[]> RegisterSelf();
         event Action<string> Started;
         event Action<string> Stopped;
+        void RunRefreshCache();
     }
 }

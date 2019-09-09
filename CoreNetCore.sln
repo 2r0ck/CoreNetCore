@@ -11,6 +11,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoreNetCoreParallelTest", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestPlatformService", "TestPlatformService\TestPlatformService.csproj", "{E344A59A-40E4-485B-9295-050617CB2689}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RabbitMQ", "RabbitMQ", "{0EA13134-663A-4BCC-8547-4DFDEA4EDCF1}"
+	ProjectSection(SolutionItems) = preProject
+		Comment.txt = Comment.txt
+		..\..\docker\rabbit\Dockerfile = ..\..\docker\rabbit\Dockerfile
+		..\..\docker\rabbit\rabbitmq.config = ..\..\docker\rabbit\rabbitmq.config
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

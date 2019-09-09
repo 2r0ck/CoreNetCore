@@ -114,6 +114,14 @@ namespace CoreNetCore.MQ
             if (queueInc == 0)
             {
                 this.running = true;
+                //запускаем обновление кэша только если удалось получить собственные ссылки т.к. это подтверждает, что оператор запущен и имеет смысл к нему обращаться
+                //
+
+                if (Config.Starter.pingperiod_ms.HasValue)
+                {
+                    Trace.TraceInformation($"RunRefreshCache started {Config.Starter.pingperiod_ms.Value}ms");
+                    Resolver.RunRefreshCache();
+                }
                 Started?.Invoke(AppId);
             }
             else
@@ -190,8 +198,8 @@ namespace CoreNetCore.MQ
                         if (responceHandlers.TryGetValue(last_via.responseHandlerName, out handlers) && handlers!=null)
                         {                            
                             foreach (var action in handlers)
-                            {
-                                action(currentMsg, last_via.responseHandlerData);
+                            {                               
+                                action(currentMsg, last_via.responseHandlerData?.ToString());
                             }
                         }
                     }                  

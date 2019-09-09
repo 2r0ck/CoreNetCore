@@ -21,7 +21,7 @@ namespace CoreNetCore.MQ
         public const string SELF_LINK_SIGN = "self_link";
 
         private ConcurrentDictionary<string, PendingEventArgs> pending = new ConcurrentDictionary<string, PendingEventArgs>();
-        private CancellationTokenSource cancellationRefreshCache;
+        private CancellationTokenSource cancellationRefreshCache = new CancellationTokenSource();
 
         public bool Bind { get; private set; }
         private ICoreConnection Connection { get; }
@@ -144,12 +144,6 @@ namespace CoreNetCore.MQ
                  msg.Ask();
              });
 
-            //Cache Refresh
-            cancellationRefreshCache = new CancellationTokenSource();
-            if (Configuration.Starter.pingperiod_ms.HasValue) {
-                RefreshCache(Configuration.Starter.pingperiod_ms.Value, cancellationRefreshCache.Token);
-            }
-
             Bind = true;
             //SendToOperator(true).Wait();
             //SendToOperator(false).Wait();
@@ -167,6 +161,14 @@ namespace CoreNetCore.MQ
                 {
                     linkCacheKeys.Add(key);
                 }
+            }
+        }
+
+        public void RunRefreshCache()
+        {
+            if (Configuration.Starter.pingperiod_ms.HasValue)
+            {
+                RefreshCache(Configuration.Starter.pingperiod_ms.Value, cancellationRefreshCache.Token);
             }
         }
 
@@ -431,5 +433,7 @@ namespace CoreNetCore.MQ
             Trace.TraceWarning($"Resolver: remove pending element fail. Key:{key}");
             return false;
         }
+
+       
     }
 }
