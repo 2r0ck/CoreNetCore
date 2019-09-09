@@ -168,6 +168,7 @@ namespace CoreNetCore.MQ
         {
             if (Configuration.Starter.pingperiod_ms.HasValue)
             {
+               
                 RefreshCache(Configuration.Starter.pingperiod_ms.Value, cancellationRefreshCache.Token);
             }
         }
@@ -175,26 +176,32 @@ namespace CoreNetCore.MQ
         private async Task RefreshCache(int timeout, CancellationToken cancelTokenRefreshCache)
         {
             await Task.Delay(timeout, cancelTokenRefreshCache);
-
-            if (cancelTokenRefreshCache.IsCancellationRequested) return;
-            if (this.Bind)
+            try
             {
-                Trace.TraceInformation("RefreshCache");
-
-                foreach (var key in linkCacheKeys)
-                {
-                    var cacheItem = Cache.Get<CacheItem>(key);
-                    if (cacheItem != null)
-                    {
-                        TaskCompletionSource<LinkEntry[]> context = null;
-                        if (cancelTokenRefreshCache.IsCancellationRequested) return;
-                        GetOrGeneratePendingContext(cacheItem.Namespace, cacheItem.service, cacheItem.version ?? 1, cacheItem.sub_version, false, out context, true);
-                    }
-                }
                 if (cancelTokenRefreshCache.IsCancellationRequested) return;
-                await SendToOperator(false);
-            }
+                if (this.Bind)
+                {
+                    Trace.TraceInformation("RefreshCache");
 
+                    foreach (var key in linkCacheKeys)
+                    {
+                        var cacheItem = Cache.Get<CacheItem>(key);
+                        if (cacheItem != null)
+                        {
+                            TaskCompletionSource<LinkEntry[]> context = null;
+                            if (cancelTokenRefreshCache.IsCancellationRequested) return;
+                            GetOrGeneratePendingContext(cacheItem.Namespace, cacheItem.service, cacheItem.version ?? 1, cacheItem.sub_version, false, out context, true);
+                        }
+                    }
+                    if (cancelTokenRefreshCache.IsCancellationRequested) return;
+                   await  SendToOperator(false);                    
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("RefreshCache error");
+                Trace.TraceError(ex.ToString());
+            }
             RefreshCache(timeout, cancelTokenRefreshCache);
         }
 
@@ -278,17 +285,17 @@ namespace CoreNetCore.MQ
         /// </summary>
         /// <param name="isSelf"></param>
         /// <returns></returns>
-        private async Task SendToOperator(bool isSelf)
+        private  Task<bool> SendToOperator(bool isSelf)
         {
             if (isSelf)
             {
                 //input.dispatcher.core
-                await Send(cfg_starter.requestdispatcherexchangename, true);
+                return Send(cfg_starter.requestdispatcherexchangename, true);
             }
             else
             {
                 //input.operator.core
-                await Send(cfg_starter.requestexchangename, false);
+                return Send(cfg_starter.requestexchangename, false);
             }
         }
 
@@ -298,7 +305,7 @@ namespace CoreNetCore.MQ
         /// <param name="exchange"></param>
         /// <param name="isSelf"></param>
         /// <returns></returns>
-        private Task Send(string exchange, bool isSelf)
+        private Task<bool> Send(string exchange, bool isSelf)
         {
             return Task.Run(() =>
             {
@@ -342,6 +349,7 @@ namespace CoreNetCore.MQ
                                 
                                 //Trace.TraceInformation("Resolver publish->" + data_str);
                             }
+                            return true;
                         }
                         catch (Exception exception)
                         {
@@ -349,9 +357,11 @@ namespace CoreNetCore.MQ
                             {
                                 taskcs.SetException(exception);
                             }
+                            throw new CoreException(exception);
                         }
                     }
                 }
+                return false;
             });
         }
 
