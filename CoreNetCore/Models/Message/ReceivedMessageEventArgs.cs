@@ -25,24 +25,24 @@ namespace CoreNetCore.Models
         /// <summary>
         /// Сообщение об удачной обработке сообщения
         /// </summary>
-        public Action Ask { get; }
+        public Action Ack { get; }
 
         /// <summary>
         /// Сообщение об неудачной обработке сообщения. Принимает параметр, указывающий требуется ли повторно отправить сообщение
         /// </summary>
-        public Action<bool> Nask { get; }
+        public Action<bool> Nack { get; }
 
         /// <summary>
         /// тип, содержащий информацию о полученном сообщении для подписчика
         /// </summary>
-        /// <param name="data">Содержание сообщения</param>
-        /// <param name="ask">Сообщение об удачной обработке сообщения</param>
-        /// <param name="nask">Сообщение об неудачной обработке сообщения. Принимает параметр, указывающий требуется ли повторно отправить сообщение</param>
-        public ReceivedMessageEventArgs(BasicDeliverEventArgs eventArgs, Action ask, Action<bool> nask)
+        /// <param name="eventArgs">Информация о сообщении</param>
+        /// <param name="ack">Сообщение об удачной обработке сообщения</param>
+        /// <param name="nack">Сообщение об неудачной обработке сообщения. Принимает параметр, указывающий требуется ли повторно отправить сообщение</param>
+        public ReceivedMessageEventArgs(BasicDeliverEventArgs eventArgs, Action ack, Action<bool> nack)
         {
             Info = eventArgs;            
-            Ask = ask;
-            Nask = nask;
+            Ack = ack;
+            Nack = nack;
         }
 
         public string GetCorrelationId()

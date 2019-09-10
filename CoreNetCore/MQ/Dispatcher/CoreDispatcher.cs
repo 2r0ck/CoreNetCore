@@ -20,7 +20,7 @@ namespace CoreNetCore.MQ
         private ConcurrentDictionary<string, Action<string>> responceCallbacks = new ConcurrentDictionary<string, Action<string>>();
 
         public string SelfServiceName => $"{Config.Starter._this._namespace}:{Config.Starter._this.servicename}:{Config.Starter._this.majorversion}";
-        public string ExchangeConnectionString { get;  private set;}
+        public string ExchangeConnectionString { get; private set; }
 
         public string QueueConnectionString { get; private set; }
 
@@ -47,17 +47,15 @@ namespace CoreNetCore.MQ
 
         private void Resolver_Started(string obj)
         {
-           
             Trace.TraceInformation("Resolver started");
 
             //Self resolving timeout, exiting ...
-            int timeout = Config.Starter.registerselftimeout??10000;
+            int timeout = Config.Starter.registerselftimeout ?? 10000;
             var register = Resolver.RegisterSelf();
-            if ( Task.WhenAny(register,Task.Delay(timeout)).Result != register)
-            {                
+            if (Task.WhenAny(register, Task.Delay(timeout)).Result != register)
+            {
                 throw new CoreException("Resolver self register timeout expired!");
             }
-
 
             var links = register.Result;
             Trace.TraceInformation("Self links resolved");
@@ -74,9 +72,12 @@ namespace CoreNetCore.MQ
                     ConsumerParam options = new ConsumerParam();
                     options.QueueParam = new ChannelQueueParam()
                     {
-                        AutoDelete = Config.MQ.autodelete ?? false
-                        //todo: expires (mq.queue.ttl)
+                        AutoDelete = Config.MQ.autodelete ?? false,
                     };
+                    if (Config.MQ.queue.ttl.HasValue)
+                    {
+                        options.QueueParam.SetExpiresMs(Config.MQ.queue.ttl.Value);
+                    }
                     switch (link.type)
                     {
                         case LinkTypes.LINK_EXCHANGE:
@@ -87,8 +88,11 @@ namespace CoreNetCore.MQ
                                 {
                                     Name = exchangeName,
                                     AutoDelete = Config.MQ.autodelete ?? false
-                                    //todo: expires (mq.bind.ttl)
                                 };
+                                if (Config.MQ.exchange.ttl.HasValue)
+                                {
+                                    options.ExchangeParam.SetExpiresMs(Config.MQ.exchange.ttl.Value);
+                                }
                             }
                             break;
 
@@ -102,7 +106,8 @@ namespace CoreNetCore.MQ
                         default: { Trace.TraceWarning($"Unknow link type: [{link.type}]"); continue; }
                     }
 
-                    Connection.Listen(options, (ea) => {
+                    Connection.Listen(options, (ea) =>
+                    {
                         this.HandleMessage(ea);
                     });
 
@@ -142,7 +147,7 @@ namespace CoreNetCore.MQ
             {
                 var methodName = ea.Properties?.ContentType;
                 List<Action<MessageEntry>> handlers;
-                if (!string.IsNullOrEmpty(methodName) && queryHandlers.TryGetValue(methodName,out handlers))
+                if (!string.IsNullOrEmpty(methodName) && queryHandlers.TryGetValue(methodName, out handlers))
                 {
                     foreach (var action in handlers)
                     {
@@ -151,7 +156,6 @@ namespace CoreNetCore.MQ
                 }
                 else
                 {
-
                     if (currentMsg.IsViaValidForResponse())
                     {
                         currentMsg.ResponseError(new CoreException($"Handler [{methodName}] not declared for this service"))
@@ -167,48 +171,40 @@ namespace CoreNetCore.MQ
                     {
                         Trace.TraceError($"Handler[{ methodName}] not declared for this service");
                     }
-                   
                 }
             }
             else
             {
-                var last_via = currentMsg.via.GetLast();
+                var last_via = currentMsg._via.GetLast();
                 if (last_via != null)
                 {
                     //callbacks
                     if (!string.IsNullOrEmpty(ea.Properties?.MessageId))
                     {
-                        //todo: callbacks timeout
                         Action<string> callback;
-                        if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callback) && callback!=null)
+                        if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callback) && callback != null)
                         {
                             var data = Encoding.UTF8.GetString(ea.Content);
                             callback(data);
-                            //var data = Encoding.UTF8.GetString(ea.Content);
-                            //foreach (var cb in callbacks)
-                            //{
-                            //    cb(data);
-                            //}                           
                         }
                     }
                     //resp handlers
                     if (!string.IsNullOrEmpty(last_via.responseHandlerName))
                     {
                         List<Action<MessageEntry, string>> handlers;
-                        if (responceHandlers.TryGetValue(last_via.responseHandlerName, out handlers) && handlers!=null)
-                        {                            
+                        if (responceHandlers.TryGetValue(last_via.responseHandlerName, out handlers) && handlers != null)
+                        {
                             foreach (var action in handlers)
-                            {                               
+                            {
                                 action(currentMsg, last_via.responseHandlerData?.ToString());
                             }
                         }
-                    }                  
+                    }
                 }
-                ea.Ask();
-            }            
+                ea.Ack();
+            }
         }
 
-        //todo: null input
         public bool DeclareQueryHandler(string actionName, Action<MessageEntry> handler)
         {
             if (handler == null)
@@ -241,45 +237,36 @@ namespace CoreNetCore.MQ
             return responceHandlers.TryAdd(actionName, new List<Action<MessageEntry, string>> { handler });
         }
 
-        //todo: timeout not implement
+       
         public bool DeclareResponseCallback(string messageId, Action<string> callback, int? timeout)
         {
             bool success = true;
             try
-            {               
+            {
                 if (callback == null)
                 {
                     throw new CoreException("Callback is null");
                 }
-                Trace.TraceInformation($"Declare response callback. MessageId={messageId}");                
+                Trace.TraceInformation($"Declare response callback. MessageId={messageId}");
                 responceCallbacks.AddOrUpdate(messageId, callback, (k, v) => callback);
-                return true;
-                //ConcurrentStack<Action<string>> handlers = null;
-                //if (responceCallbacks.TryGetValue(messageId, out handlers))
-                //{
-                //    handlers.Push(callback);
-                //    return true;
-                //}
-                //handlers = new ConcurrentStack<Action<string>>();
-                //handlers.Push(callback);
-                //return responceCallbacks.TryAdd(messageId, handlers);
+                return true;                
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 success = false;
                 throw ex;
             }
             finally
             {
-                if(success && timeout.HasValue)
+                if (success && timeout.HasValue)
                 {
-                    Task.Delay(timeout.Value).ContinueWith(res => {
-
+                    Task.Delay(timeout.Value).ContinueWith(res =>
+                    {
                         Action<string> cb;
                         if (responceCallbacks.TryRemove(messageId, out cb) && cb != null)
                         {
                             var errContext = new DataArgs<object>(new CoreException($"Callback timeout expired. MessageId=[{messageId}]"));
-                            callback(errContext.ToJson());                                                  
+                            callback(errContext.ToJson());
                         }
                     });
                 }

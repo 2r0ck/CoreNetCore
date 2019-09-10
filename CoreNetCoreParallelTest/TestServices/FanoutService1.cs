@@ -96,7 +96,7 @@ namespace CoreNetCoreParallelTest.TestServices
                 CoreConnection.Listen(consumer, (msg) =>
                 {
                     var str = Encoding.UTF8.GetString(msg.Content);
-                    msg.Ask();
+                    msg.Ack();
                     Trace.TraceInformation($"Listen ({Name}): {str}");
                     if (str == "Exit")
                     {

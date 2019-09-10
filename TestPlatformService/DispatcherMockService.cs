@@ -81,7 +81,7 @@ namespace TestPlatformService
                 {
                     var str = Encoding.UTF8.GetString(msg.Content);
                     Console.WriteLine($"Listen (TestPlatformService): {str}");
-                    msg.Ask();
+                    msg.Ack();
                 }); 
             }
             catch (Exception ex)

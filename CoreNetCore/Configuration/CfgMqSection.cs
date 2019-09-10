@@ -12,9 +12,18 @@ namespace CoreNetCore.Configuration
         [Required]
         public int maxRecoveryCount { get; set; }
         [Required]
-        public string networkRecoveryInterval { get; set; }
+        public int networkRecoveryInterval { get; set; }
         [Required]
         public Host host { get; set; }
+
+        public MqArguments queue { get; set; }
+        public MqArguments exchange { get; set; }
+
+        public ushort? heartbeat { get; set; }
+
+        public ushort? prefetch { get; set; }
+
+        
     }
 
     public class Host
@@ -24,7 +33,7 @@ namespace CoreNetCore.Configuration
         [Required]
         public Mserv mserv { get; set; }
         [Required]
-        public string port { get; set; }
+        public int port { get; set; }
     }
 
     public class Mserv
@@ -33,5 +42,10 @@ namespace CoreNetCore.Configuration
         public string username { get; set; }
         [Required]
         public string password { get; set; }
+    }
+
+    public class MqArguments
+    {
+        public int? ttl { get; set; }
     }
 }

@@ -13,9 +13,7 @@ namespace CoreNetCoreTest
     [TestClass]
     public class CoreTest
     {
-        //todo: test DI
-        //test create service
-
+        
         [TestMethod]
         public void DI_Test()
         {            

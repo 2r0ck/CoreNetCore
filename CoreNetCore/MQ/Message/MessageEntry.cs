@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
 {
-    public class MessageEntry // : IMessageEntry
+    public class MessageEntry
     {
         public ICoreDispatcher Dispatcher { get; }
 
         /// <summary>
-        /// Состояние тцепочек запросов (хлебные крошки)
+        /// Состояние цепочек запросов
         /// </summary>
-        public readonly ViaContainer via;
+        public readonly ViaContainer _via;
 
         public ReceivedMessageEventArgs ReceivedMessage { get; }
 
@@ -29,19 +29,19 @@ namespace CoreNetCore.MQ
 
             if (receivedMessage != null)
             {
-                via = receivedMessage.GetVia();
+                _via = receivedMessage.GetVia();
 
                 IsRequest = receivedMessage.GetHeaderValue(MessageBasicPropertiesHeaders.DIRECTION) != MessageBasicPropertiesHeaders.DIRECTION_VALUE_RESPONSE;
-                if (via == null)
+                if (_via == null)
                 {
-                    via = new ViaContainer()
+                    _via = new ViaContainer()
                     {
                         queue = new Stack<ViaElement>()
                     };
 
                     if (receivedMessage.Properties != null)
                     {
-                        via.queue.Push(new ViaElement()
+                        _via.queue.Push(new ViaElement()
                         {
                             appId = receivedMessage.Properties.AppId,
                             messageId = receivedMessage.Properties.MessageId,
@@ -55,7 +55,7 @@ namespace CoreNetCore.MQ
             }
             else
             {
-                via = new ViaContainer()
+                _via = new ViaContainer()
                 {
                     queue = new Stack<ViaElement>()
                 };
@@ -102,7 +102,7 @@ namespace CoreNetCore.MQ
                 responseHandlerName = responceHandlerName,
                 responseHandlerData = responseHandlerData
             };
-            this.via.queue.Push(currentViaElement);
+            this._via.queue.Push(currentViaElement);
 
             var properties = Dispatcher.Connection.CreateChannelProperties();
             properties.CorrelationId = ReceivedMessage?.Properties?.CorrelationId ?? parameters?.TransactionId ?? Guid.NewGuid().ToString();
@@ -111,7 +111,7 @@ namespace CoreNetCore.MQ
             properties.ReplyTo = currentViaElement.replyTo;
             properties.Priority = currentViaElement.priority == 0 ? (byte)1 : currentViaElement.priority;
             properties.Headers = new Dictionary<string, object>();
-            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA, this.via.ToJson());
+            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA, this._via.ToJson());
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.DIRECTION, MessageBasicPropertiesHeaders.DIRECTION_VALUE_REQUEST);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND, responseKind);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND_TYPE, MessageBasicPropertiesHeaders.WORKKIND_TYPE_VALUE);
@@ -184,7 +184,7 @@ namespace CoreNetCore.MQ
 
         private Task<DataArgs<ViaElement>> Response(string data)
         {
-            var lastVia = via?.GetLast();
+            var lastVia = _via?.GetLast();
             if (lastVia == null)
             {
                 throw new CoreException("Responce message error:  via element is null");
@@ -197,7 +197,7 @@ namespace CoreNetCore.MQ
             properties.Priority = lastVia.priority == 0 ? (byte)1 : lastVia.priority;
             properties.Type = lastVia.mqWorkKind;
             properties.Headers = new Dictionary<string, object>();
-            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA, this.via.ToJson());
+            properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA, this._via.ToJson());
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.DIRECTION, MessageBasicPropertiesHeaders.DIRECTION_VALUE_RESPONSE);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.WORKKIND, null);
             properties.Headers.TryAdd(MessageBasicPropertiesHeaders.VIA_TYPE, MessageBasicPropertiesHeaders.VIA_TYPE_VALUE);
@@ -220,17 +220,17 @@ namespace CoreNetCore.MQ
                 {
                     if (res.Exception != null)
                     {
-                        ReceivedMessage?.Nask(false);
+                        ReceivedMessage?.Nack(false);
                         throw res.Exception;
                     }
-                    ReceivedMessage?.Ask();
+                    ReceivedMessage?.Ack();
                     return res.Result;
                 });
         }
 
         public bool IsViaValidForResponse()
         {
-            var lastVia = via?.GetLast();
+            var lastVia = _via?.GetLast();
             if (lastVia == null) return false;
             if (lastVia.doResolve && string.IsNullOrEmpty(lastVia.replyTo))
             {

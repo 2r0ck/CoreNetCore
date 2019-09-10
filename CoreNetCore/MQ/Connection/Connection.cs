@@ -1,4 +1,5 @@
-﻿using CoreNetCore.Models;
+﻿using CoreNetCore.Configuration;
+using CoreNetCore.Models;
 using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client;
@@ -21,76 +22,38 @@ namespace CoreNetCore.MQ
 
         public IModel Channel => channel;
 
-        #region config
+        //#region config
 
-        private int maxRecoveryCount;
-        private int networkRecoveryInterval;
-        private ushort heartbeat;
-        private string host;
-        private bool default_durable;
-        private int port;
-        private string username;
-        private string password;
-        private ushort prefetch;
+        //private int maxRecoveryCount;
+        //private int networkRecoveryInterval;
+        //private ushort heartbeat;
+        //private string host;
+        //private bool default_durable;
+        //private int port;
+        //private string username;
+        //private string password;
+        //private ushort prefetch;
 
-        #endregion config
+        //#endregion config
 
         #region disposed_objects
 
         private IConnection connection;
         private IModel channel;
 
+        public IPrepareConfigService Configuration { get; }
+
         #endregion disposed_objects
 
-        public Connection(IAppId appId, IConfiguration configuration, IHealthcheck healthcheck)
+        public Connection(IAppId appId, IPrepareConfigService configuration, IHealthcheck healthcheck)
         {
-            IsConnected = false;
-            ReadConfig(configuration);
+            Configuration = configuration;
+            IsConnected = false;          
             AppId = appId;
             healthcheck.AddCheck(() => IsConnected);
         }
 
-        private void ReadConfig(IConfiguration configuration)
-        {
-            maxRecoveryCount = 1;
-            var warn = "Config key [{0}] not declared.";
-            //TODO: переделать на PrepareConfigService
-            if (!int.TryParse(configuration.GetStrValue("mq:maxRecoveryCount"), out maxRecoveryCount))
-            {
-                Trace.TraceWarning(string.Format(warn, "mq:maxRecoveryCount"));
-            }
-            networkRecoveryInterval = 0;
-            if (!int.TryParse(configuration.GetStrValue("mq:networkRecoveryInterval"), out networkRecoveryInterval))
-            {
-                Trace.TraceWarning(string.Format(warn, "mq:networkRecoveryInterval"));
-            }
-
-            heartbeat = 0;
-            if (!ushort.TryParse(configuration.GetStrValue("mq.heartbeat"), out heartbeat))
-            {
-                Trace.TraceWarning(string.Format(warn, "mq.heartbeat"));
-            }
-
-            port = 0;
-            if (!int.TryParse(configuration.GetStrValue("mq:host:port"), out port))
-            {
-                Trace.TraceWarning(string.Format(warn, "mq:host:port"));
-            }
-
-            prefetch = 1;
-            if (!ushort.TryParse(configuration.GetStrValue("mq:prefetch"), out prefetch))
-            {
-                Trace.TraceWarning(string.Format(warn, "mq:prefetch"));
-            }
-
-            default_durable = configuration.GetBooleanValue("mq:durable") ?? false;
-
-            host = configuration.GetStrValue("mq:host:host", true);
-
-            username = configuration.GetStrValue("mq:host:mserv:username", true);
-            password = configuration.GetStrValue("mq:host:mserv:password", true);
-        }
-
+       
         /// <summary>
         /// Инициализирует подключение RabbitMQ
         /// </summary>
@@ -102,32 +65,32 @@ namespace CoreNetCore.MQ
 
         private void Connect(int attempt)
         {
-            if (attempt > maxRecoveryCount)
+            if (attempt > Configuration.MQ.maxRecoveryCount)
             {
                 throw new CoreException("maxRecoveryCount reached.");
             }
 
             if (attempt > 1)
             {
-                Thread.Sleep(networkRecoveryInterval);
+                Thread.Sleep(Configuration.MQ.networkRecoveryInterval);
             }
             try
             {
                 var factory = new ConnectionFactory()
                 {
-                    HostName = host,
-                    UserName = username,
-                    Password = password
+                    HostName = Configuration.MQ.host.host,
+                    UserName = Configuration.MQ.host.mserv.username,
+                    Password = Configuration.MQ.host.mserv.password
                 };
 
-                if (port != 0)
+                if (Configuration.MQ.host.port != 0)
                 {
-                    factory.Port = port;
+                    factory.Port = Configuration.MQ.host.port;
                 }
 
-                if (heartbeat != 0)
+                if (Configuration.MQ.heartbeat.HasValue)
                 {
-                    factory.RequestedHeartbeat = heartbeat;
+                    factory.RequestedHeartbeat = Configuration.MQ.heartbeat.Value;
                 }
 
                 Trace.TraceInformation($@"MQ Connecting [{attempt}] to [amqp://{factory.UserName}:{factory.Password}@{factory.HostName}:{factory.Port}/?heartbeat={factory.RequestedHeartbeat}");
@@ -156,7 +119,7 @@ namespace CoreNetCore.MQ
                 //RabbitMQ has reinterpreted this field.The original specification said: "By default the QoS settings apply to the current channel only. If this field is set, they are applied to the entire connection." Instead, RabbitMQ takes global = false to mean that the QoS settings should apply per - consumer(for new consumers on the channel; existing ones being unaffected) and global = true to mean that the QoS settings should apply per - channel.
 
                 #endregion BasicQos help
-
+                var prefetch = Configuration.MQ.prefetch.HasValue ? Configuration.MQ.prefetch.Value : (ushort)1;
                 channel.BasicQos(0, prefetch, false);
                 Trace.TraceInformation($"Prefetch: {prefetch}");
                 this.IsConnected = true;
@@ -178,19 +141,14 @@ namespace CoreNetCore.MQ
         /// <param name="callback">Функция обратного вызова при получении сообщения</param>
         /// <returns></returns>
         public string Listen(ConsumerParam cparam, Action<ReceivedMessageEventArgs> callback)
-        {
-            //TODO: expires param mq.queue.ttl mq.bind.ttl
-            //return Task.Run(() =>
-            //{
-            //    try
-            //    {
+        {            
             if (cparam?.QueueParam == null)
             {
                 throw new CoreException("QueueParam not declared");
             }
-
+            var default_durable = Configuration.MQ.durable.HasValue ? Configuration.MQ.durable.Value : false;
             channel.QueueDeclare(cparam.QueueParam.Name,
-                cparam.QueueParam.Durable,
+                cparam.QueueParam.Durable ?? default_durable,
                 cparam.QueueParam.Exclusive,
                 cparam.QueueParam.AutoDelete,
                 cparam.QueueParam.Arguments);
@@ -222,7 +180,7 @@ namespace CoreNetCore.MQ
             {
                 if (callback != null)
                 {
-                    //TODO:  Ask Nask with try-catch? check if throw exception
+                    //Ack Nack with try-catch? check if throw exception
                     var msg = new ReceivedMessageEventArgs(ea,
                     () =>
                     {
@@ -251,13 +209,7 @@ namespace CoreNetCore.MQ
                 }
             };
 
-            return channel.BasicConsume(cparam.QueueParam.Name, cparam.AutoAck, consumer);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        throw new CoreException(ex);
-            //    }
-            //});
+            return channel.BasicConsume(cparam.QueueParam.Name, cparam.AutoAck, consumer);           
         }
 
         /// <summary>
@@ -287,6 +239,7 @@ namespace CoreNetCore.MQ
         {
             try
             {
+                var default_durable = Configuration.MQ.durable.HasValue ? Configuration.MQ.durable.Value : false;
                 if (pparam?.ExchangeParam != null)
                 {
                     //Exchange declare

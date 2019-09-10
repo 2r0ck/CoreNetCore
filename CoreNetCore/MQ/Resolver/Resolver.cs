@@ -79,6 +79,15 @@ namespace CoreNetCore.MQ
                 }
             };
 
+            if (Configuration.MQ.queue.ttl.HasValue)
+            {
+                cparam.QueueParam.SetExpiresMs(Configuration.MQ.queue.ttl.Value);
+            }
+            if (Configuration.MQ.exchange.ttl.HasValue)
+            {
+                cparam.ExchangeParam.SetExpiresMs(Configuration.MQ.exchange.ttl.Value);
+            }
+
             Connection.Listen(cparam, (msg) =>
              {
                  //очередь принимает массив ссылок (links)
@@ -141,7 +150,7 @@ namespace CoreNetCore.MQ
                          }
                      }
                  }
-                 msg.Ask();
+                 msg.Ack();
              });
 
             Bind = true;
@@ -168,8 +177,10 @@ namespace CoreNetCore.MQ
         {
             if (Configuration.Starter.pingperiod_ms.HasValue)
             {
-               
+#pragma warning disable CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
+                //Сообщение скрыто, как как обновление кэша необходимо производить в параллельном потоке, отдельно от основного контекста
                 RefreshCache(Configuration.Starter.pingperiod_ms.Value, cancellationRefreshCache.Token);
+#pragma warning restore CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
             }
         }
 
@@ -202,7 +213,9 @@ namespace CoreNetCore.MQ
                 Trace.TraceError("RefreshCache error");
                 Trace.TraceError(ex.ToString());
             }
+#pragma warning disable CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
             RefreshCache(timeout, cancelTokenRefreshCache);
+#pragma warning restore CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
         }
 
         public async Task<string> Resolve(string service, string type)
@@ -366,10 +379,8 @@ namespace CoreNetCore.MQ
         }
 
         /// <summary>
-        ///
+        /// Возвращает или создает контекст вызова для указанного сервиса
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="context"></param>
         /// <returns>
         /// Возвращает true если объект уже был в очереди ожидания
         /// </returns>

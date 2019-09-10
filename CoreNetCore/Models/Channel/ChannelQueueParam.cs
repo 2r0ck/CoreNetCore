@@ -21,7 +21,7 @@ namespace CoreNetCore.Models
         /// <summary>
         /// Автоматически постанавливается после рестарта
         /// </summary>
-        public bool Durable { get; set; }
+        public bool? Durable { get; set; }
 
         /// <summary>
         /// Автоматически удаляется после удаления последнего подписчика 
@@ -33,7 +33,7 @@ namespace CoreNetCore.Models
 
         public ChannelQueueParam()
         {
-            //TODO: expires param ?
+            
         }
 
         public ChannelQueueParam(string name = "", bool durable = false,bool exclusive = true,bool autoDelete=  true, IDictionary<string,object> arguments=null)
@@ -43,6 +43,15 @@ namespace CoreNetCore.Models
             Exclusive = exclusive;
             AutoDelete = autoDelete;
             Arguments = arguments;
+        }
+
+        public  void SetExpiresMs(int exp_ms)
+        {
+            if (Arguments == null)
+            {
+                Arguments = new Dictionary<string, object>();
+            }
+            Arguments.Add(MqDeclareArgumentsKeys.X_Expires, exp_ms);
         }
     }
 }

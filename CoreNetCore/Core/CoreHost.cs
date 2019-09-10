@@ -20,7 +20,7 @@ namespace CoreNetCore
         {
         }
 
-        //TODO: посмотри, тут какая то херня(возможн) and StopAsync
+        //TODO: может, отдельный Service?
         public async Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             await Task.Run(() =>

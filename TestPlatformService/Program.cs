@@ -3,14 +3,32 @@ using CoreNetCore.Models;
 using CoreNetCore.MQ;
 using CoreNetCore.Utils;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace TestPlatformService
 {
     internal class Program
     {
+
+        private static void Main2(string[] args)
+        {
+            Stack<char> testStack = new Stack<char>();
+            testStack.Push('A');
+            testStack.Push('B');
+            testStack.Push('C');
+            testStack.Push('D');
+            testStack.Push('E');
+            Console.WriteLine($"testStack->{JsonConvert.SerializeObject(testStack)}");
+            Enumerable.Range(1, 5).Select(x => { Console.Write($"pop_{x}={testStack.Pop()}; "); return 0; }).ToList();
+            Console.ReadKey();
+
+
+        }
         private static void Main1(string[] args)
         {
             //"{\"queue\":[{\"replyTo\":\"qu.platserv.appnetcore.1.fanout\",\"appId\":\"757b95b6-451b-42c9-9674-4607275746aa\",\"mqWorkKind\":\"fanout\",\"messageId\":\"3c3be247-3cae-4548-8508-f116160cd3b6\",\"type\":\"ping\",\"priority\":0,\"doResolve\":false,\"handlerMethod\":\"res:ping\",\"context\":\"{\\\"MyProperty\\\":2,\\\"MyProperty2\\\":\\\"value response\\\"}\"}]}"
@@ -133,32 +151,32 @@ namespace TestPlatformService
                         });
 
                 ////request3 to core-js service
-                //Console.WriteLine("send request3 to js service..");
-                //host.CreateMessage().RequestAsync(
-                //    "grabb:appjs:1",
-                //    ExchangeTypes.EXCHANGETYPE_FANOUT,
-                //    "ping_js",
-                //    new DataArgs<MyType1>(data2),
-                //    (result) =>
-                //    {
-                      
-                //            Console.WriteLine($"Callback Handler  Data:[{result}]");
-                //            Console.WriteLine("profit-3");
-                       
-                //    }, new MessageEntryParam() { Timeout = 5000 })
-                //        .ContinueWith(result =>
-                //        {
-                //            if (result.Exception != null)
-                //            {
-                //                Console.WriteLine(result.Exception);
-                //            }
-                //            else
-                //            {
-                //                Console.WriteLine("request3 send successfully");
-                //            }
-                //        });
-            });
+                /*Console.WriteLine("send request3 to js service..");
+                host.CreateMessage().RequestAsync(
+                    "grabb:appjs:1",
+                    ExchangeTypes.EXCHANGETYPE_FANOUT,
+                    "ping_js",
+                    new DataArgs<MyType1>(data2),
+                    (result) =>
+                    {
 
+                        Console.WriteLine($"Callback Handler  Data:[{result}]");
+                        Console.WriteLine("profit-3");
+
+                    }, new MessageEntryParam() { Timeout = 5000 })
+                        .ContinueWith(result =>
+                        {
+                            if (result.Exception != null)
+                            {
+                                Console.WriteLine(result.Exception);
+                            }
+                            else
+                            {
+                                Console.WriteLine("request3 send successfully");
+                            }
+                        });*/
+            });
+            
             Console.WriteLine("Press key to exit..");
             Console.ReadLine();
 

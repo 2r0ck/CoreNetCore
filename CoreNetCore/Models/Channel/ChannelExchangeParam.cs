@@ -31,5 +31,14 @@ namespace CoreNetCore.Models
 
         [JsonProperty("Arguments")]
         public IDictionary<string,object> Arguments { get; set; }
+
+        internal void SetExpiresMs(int exp_ms)
+        {
+            if (Arguments == null)
+            {
+                Arguments = new Dictionary<string, object>();
+            }
+            Arguments.Add(MqDeclareArgumentsKeys.X_Expires, exp_ms);
+        }
     }
 }

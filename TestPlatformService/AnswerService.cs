@@ -96,7 +96,7 @@ namespace TestPlatformService
                     var str = Encoding.UTF8.GetString(msg.Content);
 
                     
-                        msg.Ask();
+                        msg.Ack();
                      
                     
 
