@@ -14,18 +14,22 @@ namespace CoreNetCore.Configuration
         {
             get
             {
-                return ValidateErrors.Select(item => $"Configuration key [{string.Join(',', item.MemberNames)}] not defined!").ToList();
+                return ValidateErrors.Select(item => item.ErrorMessage).ToList();
             }
         }
 
         public virtual bool Validate()
         {
             var context = new ValidationContext(this, serviceProvider: null, items: null);
-            ValidateErrors = new List<ValidationResult>();
-            return Validator.TryValidateObject(
+            if (ValidateErrors == null)
+            {
+                ValidateErrors = new List<ValidationResult>();
+            }
+            var res = Validator.TryValidateObject(
                 this, context, ValidateErrors,
                 validateAllProperties: true
             );
+            return res;
         }
 
         public virtual  void ValidateAndTrace(string sectionName)
@@ -38,9 +42,13 @@ namespace CoreNetCore.Configuration
 
         public virtual bool ValidateChild(CfgSectionBase child)
         {
-            var res = child.Validate();
-            ValidateErrors.AddRange(child.ValidateErrors);
-            return res;
+            if (child != null)
+            {
+                var res = child.Validate();
+                ValidateErrors.AddRange(child.ValidateErrors);
+                return res;
+            }
+            return true;
         }
 
         public virtual void TraceErrosAndGenerateException(string sectionName)

@@ -17,9 +17,9 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="COPY $(ProjectDir)\appsettings.json $(OutDir)&#xD;&#xA;COPY  $(ProjectDir)\TestConfig $(OutDir)" />
+    <Exec Command="COPY $(ProjectDir)\appConfig.json $(OutDir)&#xD;&#xA;COPY  $(ProjectDir)\TestConfig $(OutDir)" />
   </Target>
 
-  <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JSONSchema="" /></VisualStudio></ProjectExtensions>
+  <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>

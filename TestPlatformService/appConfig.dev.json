@@ -1,0 +1,15 @@
+{
+  "ru": {
+    "spinosa": {
+      "starter": {
+        "this": {
+          "namespace": "platserv",
+          "servicename": "appnetcore",
+          "majorversion": 1,
+          "subversion": 6,
+          "ttl": "12h"
+        }
+      }
+    }
+  }
+}

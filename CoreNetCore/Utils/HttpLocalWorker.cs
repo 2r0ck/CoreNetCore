@@ -13,7 +13,7 @@ namespace CoreNetCore.Utils
     {
         bool disposeObject;
 
-        ConcurrentDictionary<string, Func<string>> handlers = new ConcurrentDictionary<string, Func<string>>();
+        ConcurrentDictionary<string, Action<HttpListenerResponse>> handlers = new ConcurrentDictionary<string, Action<HttpListenerResponse>>();
 
         bool shouldExit;
         ManualResetEvent shouldExitWaitHandle;
@@ -51,14 +51,11 @@ namespace CoreNetCore.Utils
                                 {
                                     var context = listener.EndGetContext(asyncResult);
 
-                                    Func<string> handle = null;
-                                    if(handlers.TryGetValue(context.Request.RawUrl,out handle))
+
+                                    Action<HttpListenerResponse> handle;
+                                    if (handlers.TryGetValue(context.Request.RawUrl,out handle))
                                     {
-                                        using (var writer = new StreamWriter(context.Response.OutputStream))
-                                        {
-                                            var content = handle?.Invoke() ?? string.Empty;
-                                            writer.WriteLine(content);
-                                        }
+                                        handle?.Invoke(context.Response);
                                     }
                                 }
                             }, null);
@@ -75,9 +72,9 @@ namespace CoreNetCore.Utils
             shouldExitWaitHandle.Set();            
         }
 
-        public void AddGet(string url, Func<string> func)
+        public void AddGet(string url, Action<HttpListenerResponse> action)
         {
-            handlers.AddOrUpdate(url, func,(k,f)=>func);
+            handlers.AddOrUpdate(url, action, (k,f)=> action);
         }
 
         public void Dispose()

@@ -80,6 +80,17 @@ namespace CoreNetCore.Models
 
             return null;
         }
+
+        public string GetMessageContentString()
+        {
+            if (Content != null)
+            {
+                var data_str = Encoding.UTF8.GetString(Content);
+                return data_str;
+            }
+
+            return null;
+        }
     }
 
     public sealed class MessageBasicPropertiesHeaders

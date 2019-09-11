@@ -17,6 +17,7 @@ namespace CoreNetCore.Configuration
 
         private CfgThis This { get; set; }
 
+        [Required]
         public CfgThis _this => This;
 
         public override bool Validate()

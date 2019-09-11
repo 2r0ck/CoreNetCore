@@ -8,9 +8,11 @@ namespace CoreNetCore.Configuration
     public class PrepareConfigService : IPrepareConfigService
     {
         public IConfiguration Configuration { get; }
-        public CfgStarterSection Starter { get; private set; }
+        public CfgStarterSection Starter => Ru?.spinosa?.starter;
 
-        public CfgMqSection MQ { get; private set; }
+        public CfgMqSection MQ => Ru?.spinosa?.mq;
+
+        public CfgRuSection Ru { get; private set; }
 
         public PrepareConfigService(IConfiguration configuration)
         {
@@ -21,14 +23,22 @@ namespace CoreNetCore.Configuration
         //ADD MQ и переделать connection
         private void ReadConfig(IConfiguration configuration)
         {
-            Starter = new CfgStarterSection();
-            configuration.GetSection("starter").Bind(Starter, options => options.BindNonPublicProperties = true);
-            Starter.ValidateAndTrace("starter");
+        //    Starter = new CfgStarterSection();
+        //    configuration.GetSection("starter").Bind(Starter, options => options.BindNonPublicProperties = true);
+        //    Starter.ValidateAndTrace("starter");
 
-            MQ = new CfgMqSection();
-            configuration.GetSection("mq").Bind(MQ);
-            Starter.ValidateAndTrace("mq");
+        //    MQ = new CfgMqSection();
+        //    configuration.GetSection("mq").Bind(MQ);
+        //    Starter.ValidateAndTrace("mq");
+
+            Ru = new CfgRuSection();
+            configuration.GetSection("ru").Bind(Ru, options => options.BindNonPublicProperties = true);
+
+            Starter?.ValidateAndTrace("starter");
+            MQ?.ValidateAndTrace("mq");
+            Ru.ValidateAndTrace("ru");
         }
+
 
     }
 }

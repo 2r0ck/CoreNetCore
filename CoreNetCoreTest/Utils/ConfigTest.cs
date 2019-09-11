@@ -116,6 +116,18 @@ namespace CoreNetCoreTest.Utils
         }
 
         [TestMethod]
+        public void GetPrepareMultiConfigTest()
+        {
+            var host = new CoreHostBuilder()
+                .ConfigureAppConfiguration((context, builder) => {
+                    builder.AddJsonFile("config.json");
+                }).Build();
+            var configuration = host.Services.GetService<IPrepareConfigService>();
+            Assert.IsNotNull(configuration?.MQ);
+            Assert.IsNotNull(configuration?.Starter);
+        }
+
+        [TestMethod]
         public void ValidateSectionTest()
         {
             CfgStarterSection cfg_starter = new CfgStarterSection();

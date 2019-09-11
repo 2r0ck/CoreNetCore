@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -262,6 +263,7 @@ namespace CoreNetCore.MQ
             return context.Task;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Task<LinkEntry[]> GetLinks(string name_space, string service, int version, bool isSelf)
         {
             var serviceKey = GetKey(name_space, service, version);

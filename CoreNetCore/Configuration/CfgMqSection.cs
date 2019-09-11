@@ -7,8 +7,8 @@ namespace CoreNetCore.Configuration
         
         public bool? autodelete { get; set; }
         public bool? durable { get; set; }
-        [Required]
-        public int healthcheckPort { get; set; }
+        
+        public int? healthcheckPort { get; set; }
         [Required]
         public int maxRecoveryCount { get; set; }
         [Required]
@@ -22,7 +22,6 @@ namespace CoreNetCore.Configuration
         public ushort? heartbeat { get; set; }
 
         public ushort? prefetch { get; set; }
-
         
     }
 

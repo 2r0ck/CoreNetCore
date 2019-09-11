@@ -193,11 +193,11 @@ namespace CoreNetCore.MQ
                             Trace.TraceWarning($"Ask error:{ex}");
                         }
                     },
-                    (autoRepit) =>
+                    (autoRepeat) =>
                     {
                         try
                         {
-                            channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepit);
+                            channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: autoRepeat);
                         }
                         catch (Exception ex)
                         {

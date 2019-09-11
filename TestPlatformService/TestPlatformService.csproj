@@ -6,11 +6,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="publish\**" />
+    <EmbeddedResource Remove="publish\**" />
+    <None Remove="publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CoreNetCore\CoreNetCore.csproj" />
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="COPY $(ProjectDir)\appsettings.json $(OutDir)" />
+    <Exec Command="COPY $(ProjectDir)\appConfig.json $(OutDir)&#xD;&#xA;COPY $(ProjectDir)\config.json $(OutDir)" />
   </Target>
 
 </Project>

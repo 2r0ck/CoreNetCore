@@ -31,9 +31,7 @@ namespace CoreNetCore.MQ
                 }
                 return _currentUID;
             }
-        }
-
-        public string Test { get; set; }
+        }      
 
         //APPID
         private string GetUID()

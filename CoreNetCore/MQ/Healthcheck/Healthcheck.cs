@@ -1,8 +1,10 @@
-﻿using CoreNetCore.Utils;
+﻿using CoreNetCore.Configuration;
+using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
@@ -12,20 +14,42 @@ namespace CoreNetCore.MQ
         private HttpLocalWorker http;
 
         private IList<Func<bool>> checks { get; }
-        private IConfiguration Configuration { get; }
+        private CfgMqSection ConfigMq { get; }
 
-        public Healthcheck(IConfiguration configuration)
+        public Healthcheck(IPrepareConfigService configuration)
         {
             checks = new List<Func<bool>>();
-            Configuration = configuration;
-
+            ConfigMq = configuration.MQ;
         }
 
         public async Task StartAsync()
         {
-            var port = Configuration.GetIntValue("mq:healthcheckPort") ?? 8048;
+            var port = ConfigMq?.healthcheckPort ?? 8048;
             http = new HttpLocalWorker(port);
-            http.AddGet("/healthcheck", () => Validate().ToString());
+            http.AddGet("/healthcheck", (response) =>
+            {
+                try
+                {
+                    int statusCode = 500;
+                    string result = "false";
+                    if (Validate())
+                    {
+                        statusCode = 200;
+                        result = "true";
+                    }
+                    response.StatusCode = statusCode;
+                    using (var writer = new StreamWriter(response.OutputStream))
+                    {
+                        writer.WriteLine(result);
+                    }
+
+                }catch(Exception ex)
+                {
+                    Trace.TraceError("Healthcheck error!");
+                    Trace.TraceError(ex.ToString());
+                }
+
+            });
 
             await http.StartAsync(
                    () => Trace.TraceInformation($"Healtcheck started. Port: {port}"),

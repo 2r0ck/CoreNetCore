@@ -34,7 +34,7 @@ namespace CoreNetCore.Configuration
             var fileNamesStr = Environment.GetEnvironmentVariable(ConfigurationFactory.ENVRIOMENT_CONFIG_FILE_NAMES);
             if (string.IsNullOrEmpty(fileNamesStr))
             {
-                fileNamesStr = $"appsettings.json,appsettings.{HostingEnvironment.EnvironmentName}.json";
+                fileNamesStr = $"appConfig.json,appConfig.{HostingEnvironment.EnvironmentName}.json";                
             }
 
             var cfgFiles = fileNamesStr.Split(',', StringSplitOptions.RemoveEmptyEntries);

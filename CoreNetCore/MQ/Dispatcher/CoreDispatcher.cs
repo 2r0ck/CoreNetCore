@@ -155,7 +155,7 @@ namespace CoreNetCore.MQ
                     }
                 }
                 else
-                {
+                { //TODO: проверить механизм ответов на неверный запрос
                     if (currentMsg.IsViaValidForResponse())
                     {
                         currentMsg.ResponseError(new CoreException($"Handler [{methodName}] not declared for this service"))
@@ -169,7 +169,17 @@ namespace CoreNetCore.MQ
                     }
                     else
                     {
-                        Trace.TraceError($"Handler[{ methodName}] not declared for this service");
+                       
+                        var err = $"Handler[{ methodName}] not declared for this service";
+                        Trace.TraceError(err);
+                        //try
+                        //{
+                        //    currentMsg.ResponseError(new CoreException(err));
+                        //}
+                        //catch(Exception ex)
+                        //{
+                        //    Trace.TraceError(ex.ToString());
+                        //}                        
                     }
                 }
             }
