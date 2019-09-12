@@ -5,21 +5,27 @@ using CoreNetCore.MQ;
 using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestPlatformService
 {
     internal class Program
     {
-
-
         private static void Main(string[] args)
         {
+            var self_test_requests = args.Length > 0 ? args[0].ToLower() == "-self" : false;
+
+            Trace.TraceInformation($"TestPlatformService started (self_test_requests={self_test_requests})");
+
             Stream myFile = File.Create("TestPlatformServiceLog.txt");
 
             TextWriterTraceListener myTextListener = new
@@ -30,15 +36,23 @@ namespace TestPlatformService
 
             var hostBuilder = new CoreHostBuilder();
 
-            var host = hostBuilder.ConfigureAppConfiguration((context, builder) =>
+            var host = hostBuilder
+#if DEBUG
+                .ConfigureHostConfiguration(conBuilder => {
+                    conBuilder.AddInMemoryCollection(new [] { new KeyValuePair<string, string>(HostDefaults.EnvironmentKey, "Development")});                    
+                })
+#endif
+                .ConfigureAppConfiguration((context, builder) =>
             {
                 builder.AddJsonFile("config.json");
                 Trace.TraceInformation($"Load config file: config.json");
             })  
             .Build();
-            
+            var dispatch = host.GetService<ICoreDispatcher>();
+            dispatch.HandleMessageErrors += Dispatch_HandleErrors;
 
             host.DeclareQueryHandler("ping_nc", pingHandler);
+            host.DeclareQueryHandler("query_test", QueryTestHandler);
 
             host.DeclareResponseHandler("res:ping_nc", responsePingHandler);
 
@@ -53,8 +67,8 @@ namespace TestPlatformService
                 {
                     Console.WriteLine("App STARTED!");
                 }
-                #region Send test requests
-                bool self_test_requests = true;
+#region Send test requests
+              
                 if (self_test_requests)
                 {
                     var config = host.GetService<IPrepareConfigService>();
@@ -156,7 +170,7 @@ namespace TestPlatformService
                             }
                         });*/
 
-                #endregion Send Requests
+#endregion Send Requests
             });
 
             Console.WriteLine("Press key to exit..");
@@ -164,6 +178,12 @@ namespace TestPlatformService
 
             host.StopAsync();
             Console.ReadLine();
+        }
+
+        private static void Dispatch_HandleErrors(ReceivedMessageEventArgs arg1, Exception arg2)
+        {
+            Console.WriteLine(arg2);
+            Environment.Exit(1);
         }
 
         private static void responsePingHandler(MessageEntry arg1, string arg2)
@@ -182,10 +202,27 @@ namespace TestPlatformService
         {
             try
             {
-                /// var data = obj.ReceivedMessage.GetMessageData<DataArgs<MyType1>>();
-                // Console.WriteLine("Request Handler Data->" + data.ToJson());
-
                 Console.WriteLine("Request Handler Data->" + obj.ReceivedMessage.GetMessageContentString());
+
+
+                obj.ResponseOk(new DataArgs<string>("net core answer: hello"));
+            }
+            catch (Exception ex)
+            {
+                obj.ResponseError(ex);
+            }
+        }
+
+        private static void QueryTestHandler(MessageEntry obj)
+        {
+            try
+            {
+                var data = obj.ReceivedMessage.GetMessageData<DataArgs<string>>();
+
+                Console.WriteLine($"Request Handler. Start [{data.data}]..");
+                Thread.Sleep(5000);
+                Console.WriteLine($"Request Handler.Done [{data.data}]");
+
                 obj.ResponseOk(new DataArgs<string>("net core answer: hello"));
             }
             catch (Exception ex)
@@ -199,20 +236,7 @@ namespace TestPlatformService
             public int MyProperty { get; set; }
             public string MyProperty2 { get; set; }
         }
-
-        //private static void Main2(string[] args)
-        //{
-        //    Stack<char> testStack = new Stack<char>();
-        //    testStack.Push('A');
-        //    testStack.Push('B');
-        //    testStack.Push('C');
-        //    testStack.Push('D');
-        //    testStack.Push('E');
-        //    Console.WriteLine($"testStack->{JsonConvert.SerializeObject(testStack)}");
-        //    Enumerable.Range(1, 5).Select(x => { Console.Write($"pop_{x}={testStack.Pop()}; "); return 0; }).ToList();
-        //    Console.ReadKey();
-        //}
-
+ 
         //private static void Main1(string[] args)
         //{
         //    //"{\"queue\":[{\"replyTo\":\"qu.platserv.appnetcore.1.fanout\",\"appId\":\"757b95b6-451b-42c9-9674-4607275746aa\",\"mqWorkKind\":\"fanout\",\"messageId\":\"3c3be247-3cae-4548-8508-f116160cd3b6\",\"type\":\"ping\",\"priority\":0,\"doResolve\":false,\"handlerMethod\":\"res:ping\",\"context\":\"{\\\"MyProperty\\\":2,\\\"MyProperty2\\\":\\\"value response\\\"}\"}]}"

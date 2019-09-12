@@ -1,0 +1,228 @@
+{
+  "ru": {
+    "spinosa": {
+      "auth": {
+        "crypto": {
+          "SALT": "salt_keY",
+          "IV": "_init_Vector_IV_"
+        }
+      },
+      "starter": {
+        "requestexchangename": "input.operator.core",
+        "responseexchangename": "starter.output",
+        "requestdispatcherexchangename": "input.dispatcher.core",
+        "cahceEntyTTL_sec": 600,
+        "cacheEntryTTL_sec": 600,
+        "cachecapacity": 500,
+        "pingperiod_ms": 600000,
+        "cache_renew_period_ms": 600000
+      },
+      "testing": {
+        "mqApiPass":"trash",
+        "mqApiUrl":"trash",
+        "mqApiLogin":"trash"
+      },
+      "log": {
+        "exchangeKind": "broadcast",
+        "queuename": "logs",
+        "encoder": {
+          "pattern": "%-4relative [%thread] %-5level %logger{35} - %msg %n"
+        }
+      },
+      "logs": {
+        "queuenameprefix": "logs",
+        "encoder": {
+          "pattern": "%-4relative [%thread] %-5level %logger{35} - %msg %n"
+        },
+        "indexes": {
+          "all": "all"
+        }
+      },
+      "mq": {
+        "sender": {
+          "poolsize": 10,
+          "restorechanelattempts": 5,
+          "maxQueueSize": 500,
+          "saveMessagesPath": "/",
+          "threadKeepAlive_sec": 60,
+          "saveMessagesInTestMode": "false"
+        },
+        "externalexchanges": {
+          "system": "statistics,logs,input.operator.core,input.dispatcher.core"
+        },
+        "healthcheckPort": 8048,
+        "heartbeat": 60,
+        "maxRecoveryCount": 5,
+        "workercount": 5,
+        "errors_queue_suffix": "error",
+        "durable": "True",
+        "autodelete": "False",
+        "networkRecoveryInterval": "5000",
+        "queue": {
+          "ttl": "600000"
+        },
+        "host": {
+          "host": "localhost",
+          "mserv": {
+            "username": "",
+            "password": ""
+          },
+          "port": "5672"
+        },
+        "connectionTimeOut": "5000",
+        "envelope": {
+          "ttl": "600000"
+        },
+        "exchange": {
+          "ttl": "600000"
+        },
+        "bind": {
+          "ttl": "600000"
+        },
+        "log": {
+          "host": "10.188.3.12",
+          "port": "5673",
+          "autodelete": "False",
+          "maxRecoveryCount": 5,
+          "durable": "True",
+          "connectionTimeOut": 10000,
+          "networkRecoveryInterval": 10000,
+          "username": "admin",
+          "password": "gc3yM4oUz",
+          "envelope": {
+            "ttl": "600000"
+          }
+        }
+      },
+      "core": {
+        "queueNamesReceiveTimeoutSeconds": 120,
+        "queueResolveTimeoutSeconds": 120,
+        "maximumShutdownTimeSeconds": 120,
+        "logging": {
+          "logPath": "/logs/%hostname/log_%d{yyyy-MM-dd}.%i.log",
+          "logLevel": "INFO",
+          "appenders": {
+            "appenders": {
+              "INFO": [
+                {
+                  "clazz": "ru.spinosa.core.maintenance.log.MQAppender"
+                },
+                {
+                  "clazz": "ch.qos.logback.core.ConsoleAppender",
+                  "pattern": "%d{HH:mm:ss.SSS} %-4relative %-5level - %msg %n"
+                },
+                {
+                  "clazz": "ch.qos.logback.core.rolling.RollingFileAppender",
+                  "pattern": "%obj_gson %n"
+                }
+              ],
+              "DEBUG": [
+                {
+                  "clazz": "ch.qos.logback.core.ConsoleAppender",
+                  "pattern": "%msg %n - %obj_gson %n"
+                }
+              ],
+              "ERROR": [
+                {
+                  "clazz": "ch.qos.logback.core.rolling.RollingFileAppender",
+                  "pattern": "%obj_gson %n"
+                }
+              ]
+            }
+          },
+          "maxLogSize": "1Mb",
+          "currentLogFilePath": "/logs/%hostname/log.log"
+        },
+        "metrics": {
+          "queue": "statistics",
+          "exchangeKind": "broadcast"
+        },
+        "maintenance": {
+          "queuename":"trash",
+          "reloadconfig":"trash"
+        },
+        "errorCodes": [
+          {
+            "code": 0,
+            "messages": {
+              "en": "OK",
+              "ru": "OK"
+            },
+            "description": "OK"
+          },
+          {
+            "code": -1,
+            "messages": {
+              "en": "unknown error",
+              "ru": "Неизвестная ошибка"
+            },
+            "description": "Неизвестная ошибка"
+          },
+          {
+            "code": 1,
+            "messages": {
+              "en": "Non-unique request id: %s"
+            },
+            "description": "Прислан запрос с неуникальным requestId."
+          },
+          {
+            "code": 2,
+            "messages": {
+              "en": "Non-unique transaction id: %s"
+            },
+            "description": "Неуникальный номер транзакции."
+          },
+          {
+            "code": 3,
+            "messages": {
+              "en": "Invalid args format exception: args must be Object."
+            },
+            "description": "Неправильный формат секции args в запросе: она должна быть json-объектом."
+          },
+          {
+            "code": 4,
+            "messages": {
+              "en": "AuthUuid variable is missing."
+            },
+            "description": "Если запрос не является попыткой авторизации, то он должен содержать AuthUuid - токен, который выдается пользователю после авторизации. Данная ошибка появляется в случае его отсутствия."
+          },
+          {
+            "code": 5,
+            "messages": {
+              "en": "Auth request must contain token or login/password pair."
+            },
+            "description": "Если запрос является попыткой авторизации, то он должен содержать либо клиентский токен, либо логин и пароль. Данная ошибка появляется в случае отсутсвия и токена, и логина/пароля в запросе."
+          },
+          {
+            "code": 6,
+            "messages": {
+              "en": "Wrong login or password for login %s"
+            },
+            "description": "Неверный логин или пароль."
+          },
+          {
+            "code": 7,
+            "messages": {
+              "en": "Invalid JSON syntax"
+            },
+            "description": "Неверный JSON, десериализация невозможна"
+          },
+          {
+            "code": 8,
+            "messages": {
+              "en": "Service termination is in progress."
+            },
+            "description": "Сервис в процессе остановки и не принимает запросы, нужно попробовать позже."
+          },
+          {
+            "code": 9,
+            "messages": {
+              "en": "args node is missing."
+            },
+            "description": "В запросе отсутствует нода args."
+          }
+        ]
+      }
+    }
+  }
+}

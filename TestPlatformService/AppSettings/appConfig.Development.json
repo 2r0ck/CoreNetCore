@@ -1,0 +1,18 @@
+{
+  "ru": {
+    "spinosa": {
+      "mq": {
+        "prefetch": 5,
+        "healthcheckPort": 8048,
+        "host": {
+          "host": "localhost",
+          "mserv": {
+            "username": "admin",
+            "password": "root"
+          },
+          "port": "5672"
+        }
+      }
+    }
+  }
+}

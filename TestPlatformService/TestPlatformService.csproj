@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="COPY $(ProjectDir)\appConfig.json $(OutDir)&#xD;&#xA;COPY $(ProjectDir)\config.json $(OutDir)" />
+    <Exec Command="COPY $(ProjectDir)\AppSettings $(OutDir)&#xD;&#xA;" />
   </Target>
 
 </Project>

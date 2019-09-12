@@ -53,7 +53,7 @@ namespace CoreNetCore.Configuration
                     Trace.TraceInformation($"Load config file: {file}");
                 }
             }
-
+            
             config.AddEnvironmentVariables(prefix: ConfigurationFactory.ENVRIOMENT_CONFIG_APP_PREFIX);
             return config;
         }

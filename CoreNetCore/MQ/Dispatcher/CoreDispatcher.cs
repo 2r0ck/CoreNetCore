@@ -34,6 +34,8 @@ namespace CoreNetCore.MQ
 
         public event Action<string> Started;
 
+        public event Action<ReceivedMessageEventArgs,Exception> HandleMessageErrors;
+
         public CoreDispatcher(IPrepareConfigService config, IAppId appId, ICoreConnection coreConnection, IResolver resolver, IHealthcheck healthcheck)
         {
             Config = config;
@@ -106,9 +108,12 @@ namespace CoreNetCore.MQ
                         default: { Trace.TraceWarning($"Unknow link type: [{link.type}]"); continue; }
                     }
 
+                    //Максимальный пул одновременных сообщений контролируется параметром ru:spinosa:mq:prefetch
+                    //т.е. максимальным числом полученных сообщений оставленных без ответа
                     Connection.Listen(options, (ea) =>
                     {
-                        this.HandleMessage(ea);
+                        Task.Run(() => this.HandleMessage(ea))
+                        .ContinueWith(res=> { this.HandleMessageErrors?.Invoke(ea,res.Exception); },TaskContinuationOptions.OnlyOnFaulted);
                     });
 
                     Trace.TraceInformation($"Bind {exchangeName} successed");
@@ -137,82 +142,70 @@ namespace CoreNetCore.MQ
 
         private void HandleMessage(ReceivedMessageEventArgs ea)
         {
-            if (ea == null)
+            MessageEntry currentMsg = null;
+            try
             {
-                Trace.TraceWarning("Dispatcher HandleMessage: ReceivedMessageEventArgs is null");
-                return;
-            }
-            var currentMsg = new MessageEntry(this, ea);
-            if (currentMsg.IsRequest)
-            {
-                var methodName = ea.Properties?.ContentType;
-                List<Action<MessageEntry>> handlers;
-                if (!string.IsNullOrEmpty(methodName) && queryHandlers.TryGetValue(methodName, out handlers))
+                if (ea == null)
                 {
-                    foreach (var action in handlers)
-                    {
-                        action(currentMsg);
-                    }
+                    Trace.TraceWarning("Dispatcher HandleMessage: ReceivedMessageEventArgs is null");
+                    return;
                 }
-                else
-                { //TODO: проверить механизм ответов на неверный запрос
-                    if (currentMsg.IsViaValidForResponse())
+                currentMsg = new MessageEntry(this, ea);
+                if (currentMsg.IsRequest)
+                {
+                    var methodName = ea.Properties?.ContentType;
+                    List<Action<MessageEntry>> handlers;
+                    if (!string.IsNullOrEmpty(methodName) && queryHandlers.TryGetValue(methodName, out handlers))
                     {
-                        currentMsg.ResponseError(new CoreException($"Handler [{methodName}] not declared for this service"))
-                       .ContinueWith((res) =>
-                       {
-                           if (res.Exception != null)
-                           {
-                               Trace.TraceError(res.Exception.ToString());
-                           }
-                       });
+                        foreach (var action in handlers)
+                        {                           
+                            action(currentMsg);
+                        }
                     }
                     else
                     {
-                       
-                        var err = $"Handler[{ methodName}] not declared for this service";
-                        Trace.TraceError(err);
-                        //try
-                        //{
-                        //    currentMsg.ResponseError(new CoreException(err));
-                        //}
-                        //catch(Exception ex)
-                        //{
-                        //    Trace.TraceError(ex.ToString());
-                        //}                        
+                        throw new CoreException($"Handler [{methodName}] not declared for this service"); 
                     }
                 }
-            }
-            else
-            {
-                var last_via = currentMsg._via.GetLast();
-                if (last_via != null)
+                else
                 {
-                    //callbacks
-                    if (!string.IsNullOrEmpty(ea.Properties?.MessageId))
+                    var last_via = currentMsg._via.GetLast();
+                    if (last_via != null)
                     {
-                        Action<string> callback;
-                        if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callback) && callback != null)
+                        //callbacks
+                        if (!string.IsNullOrEmpty(ea.Properties?.MessageId))
                         {
-                            var data = Encoding.UTF8.GetString(ea.Content);
-                            callback(data);
-                        }
-                    }
-                    //resp handlers
-                    if (!string.IsNullOrEmpty(last_via.responseHandlerName))
-                    {
-                        List<Action<MessageEntry, string>> handlers;
-                        if (responceHandlers.TryGetValue(last_via.responseHandlerName, out handlers) && handlers != null)
-                        {
-                            foreach (var action in handlers)
+                            Action<string> callback;
+                            if (responceCallbacks.TryRemove(ea.Properties.MessageId, out callback) && callback != null)
                             {
-                                action(currentMsg, last_via.responseHandlerData?.ToString());
+                                var data = Encoding.UTF8.GetString(ea.Content);
+                                callback(data);
+                            }
+                        }
+                        //resp handlers
+                        if (!string.IsNullOrEmpty(last_via.responseHandlerName))
+                        {
+                            List<Action<MessageEntry, string>> handlers;
+                            if (responceHandlers.TryGetValue(last_via.responseHandlerName, out handlers) && handlers != null)
+                            {
+                                foreach (var action in handlers)
+                                {
+                                    action(currentMsg, last_via.responseHandlerData?.ToString());
+                                }
                             }
                         }
                     }
+                    ea.Ack();
                 }
-                ea.Ack();
             }
+            catch (Exception ex )
+            {
+                if (currentMsg.IsRequest && currentMsg.IsViaValidForResponse())
+                { 
+                    currentMsg.ResponseError(ex);                   
+                }
+                throw ex;
+            }            
         }
 
         public bool DeclareQueryHandler(string actionName, Action<MessageEntry> handler)

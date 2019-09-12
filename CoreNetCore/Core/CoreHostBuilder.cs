@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration.Json;
 
 namespace CoreNetCore
 {
@@ -134,6 +135,7 @@ namespace CoreNetCore
             configBuilder.AddConfiguration(new ConfigurationFactory(_hostingEnvironment).GetDefault());
 
             _appConfiguration = configBuilder.Build();
+
             _hostBuilderContext.Configuration = _appConfiguration;
         }
 

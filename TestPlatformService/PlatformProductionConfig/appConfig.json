@@ -7,7 +7,7 @@
           "servicename": "test",
           "majorversion": 1,
           "subversion": 1,
-          "environment": "prod",
+          "environment": "dev",
           "container": "test",
           "hostip": "",
           "stack": "packaging",
