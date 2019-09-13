@@ -4,6 +4,8 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <NeutralLanguage></NeutralLanguage>
+    <Company>Gloria Jeans</Company>
+    <Authors>yarulin@gloria-jeans.ru</Authors>
   </PropertyGroup>
 
   <ItemGroup>
