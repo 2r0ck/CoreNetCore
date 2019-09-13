@@ -12,7 +12,7 @@ build_images:
 
   script:
     - dotnet build -c release CoreNetCore
-
+    - dotnet nuget push -s http://haproxy.lb.dbs.grp.gloria-jeans.ru:1080/v3/index.json CoreNetCore.nupkg
 
   only:
     - master
