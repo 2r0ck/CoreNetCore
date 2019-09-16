@@ -11,6 +11,9 @@ build_images:
     - docker
 
   script:
+    - VERSION=$(git rev-list --all --count)
+    - sed -i -r 's/<Version>([0-9]*)\.([0-9])*\.[0-9]*/<Version>\1.\2.'"$VERSION"'/' CoreNetCore/CoreNetCore.csproj
+    - echo $VERSION
     - dotnet build -c release CoreNetCore
     - dotnet nuget push -s http://haproxy.lb.dbs.grp.gloria-jeans.ru:1080/v3/index.json CoreNetCore/bin/release/CoreNetCore*.nupkg
 
