@@ -1,0 +1,18 @@
+stages:
+  - build
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+build_images:
+  stage: build
+  image: registry.gloria-jeans.ru/gitlab/netcore:28.0.3.v1
+  tags:
+    - dind
+    - docker
+
+  script:
+    - dotnet build -c release CoreNetCore
+    - dotnet nuget push -s http://haproxy.lb.dbs.grp.gloria-jeans.ru:1080/v3/index.json CoreNetCore/bin/release/CoreNetCore*.nupkg
+
+  only:
+    - master
