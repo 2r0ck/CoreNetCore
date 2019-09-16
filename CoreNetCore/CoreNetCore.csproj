@@ -6,6 +6,9 @@
     <NeutralLanguage></NeutralLanguage>
     <Company>Gloria Jeans</Company>
     <Authors>yarulin@gloria-jeans.ru</Authors>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.1.1</AssemblyVersion>
+    <FileVersion>1.0.1.1</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
