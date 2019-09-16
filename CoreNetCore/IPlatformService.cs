@@ -6,6 +6,6 @@ namespace CoreNetCore
 {
     public  interface  IPlatformService
     {       
-        void  Run(string[] args=null);
+        void  Run(string[] args=null); 
     }
 }
