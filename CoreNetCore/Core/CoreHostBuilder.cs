@@ -53,9 +53,11 @@ namespace CoreNetCore
         public CoreHostBuilder()
         {
             Properties = new Dictionary<object, object>();
+            BaseHostBulder = new HostBuilder();
         }
 
         public IDictionary<object, object> Properties { get; }
+        public HostBuilder BaseHostBulder { get; }
 
         public IHost Build()
         {
@@ -64,6 +66,10 @@ namespace CoreNetCore
                 throw new CoreException("Core build can only be called once.");
             }
             _coreHostBuilt = true;
+
+         
+
+
 
             BuildHostConfiguration();
             CreateHostingEnvironment();

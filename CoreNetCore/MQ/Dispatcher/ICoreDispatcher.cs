@@ -32,6 +32,9 @@ namespace CoreNetCore.MQ
         string GetConnectionByExchangeType(string exchangeKind);
 
         Task<string> Resolve(string service, string type);
+
         event Action<ReceivedMessageEventArgs, Exception> HandleMessageErrors;
+
+        MessageEntry CreateMessage(ReceivedMessageEventArgs receivedMessage = null);
     }
 }
