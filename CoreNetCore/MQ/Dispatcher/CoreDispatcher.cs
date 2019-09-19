@@ -285,5 +285,10 @@ namespace CoreNetCore.MQ
         {
             return Resolver.Resolve(service, type);
         }
+
+        public MessageEntry CreateMessage(ReceivedMessageEventArgs receivedMessage = null)
+        {            
+            return new MessageEntry(this, receivedMessage);
+        }
     }
 }

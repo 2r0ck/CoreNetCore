@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace CoreNetCore
 {
-    internal class CoreHost : IHost
+    class CoreHost : IHost
     {
         public CoreHost(IServiceProvider services)
         {

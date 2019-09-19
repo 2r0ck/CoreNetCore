@@ -22,7 +22,68 @@ namespace TestPlatformService
     {
         private static void Main(string[] args)
         {
-            var self_test_requests = args.Length > 0 ? args[0].ToLower() == "-self" : false;
+
+            Stream myFile = File.Create("TestPlatformServiceLog.txt");
+
+            TextWriterTraceListener myTextListener = new
+               CustomTrace(myFile);
+            Trace.Listeners.Add(myTextListener);
+
+            Trace.AutoFlush = true;
+
+            var hostBuilder = new CoreHostBuilder();
+
+            var host = hostBuilder
+#if DEBUG
+                .ConfigureHostConfiguration(conBuilder => {
+                    conBuilder.AddInMemoryCollection(new [] { new KeyValuePair<string, string>(HostDefaults.EnvironmentKey, "Development")});                    
+                })
+#endif
+                .ConfigureAppConfiguration((context, builder) =>
+                {
+                    builder.AddJsonFile("config.json");
+                    Trace.TraceInformation($"Load config file: config.json");
+                })
+                .ConfigureServices(sc=> {
+
+                    sc.AddScoped<IPlatformService, MyClass1>();
+                    sc.AddScoped<IPlatformService, MyClass2>();
+                })
+            .Build();
+
+
+            var servoces = host.Services.GetServices<IPlatformService>();
+
+            foreach (var item in servoces)
+            {
+                item.Run();
+            }
+
+
+            Console.ReadKey();
+        }
+
+
+        class MyClass1 : IPlatformService
+        {
+            public void Run(string[] args = null)
+            {
+                Console.WriteLine("IPlatformService 1");
+            }
+        }
+
+        class MyClass2 : IPlatformService
+        {
+            public void Run(string[] args = null)
+            {
+                Console.WriteLine("IPlatformService 2");
+            }
+        }
+
+
+        private static void Main22(string[] args)
+        {
+            var self_test_requests = true;//args.Length > 0 ? args[0].ToLower() == "-self" : false;
 
             Trace.TraceInformation($"TestPlatformService started (self_test_requests={self_test_requests})");
 
@@ -49,6 +110,9 @@ namespace TestPlatformService
             })  
             .Build();
             var dispatch = host.GetService<ICoreDispatcher>();
+
+           
+
             dispatch.HandleMessageErrors += Dispatch_HandleErrors;
 
             host.DeclareQueryHandler("ping_nc", pingHandler);
