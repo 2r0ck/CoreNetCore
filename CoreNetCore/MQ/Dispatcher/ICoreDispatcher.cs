@@ -1,13 +1,11 @@
 ﻿using CoreNetCore.Models;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
 {
     public interface ICoreDispatcher
     {
-
         string AppId { get; }
         ICoreConnection Connection { get; }
 
@@ -15,15 +13,17 @@ namespace CoreNetCore.MQ
 
         bool DeclareResponseHandler(string actionName, Action<MessageEntry, string> handler);
 
-        bool DeclareResponseCallback(string messageId, Action<string> callback,int? timeout);
+        bool DeclareResponseCallback(string messageId, Action<string> callback, int? timeout);
+
         event Action<string> Started;
 
         string SelfServiceName { get; }
+
         /// <summary>
         /// connection for query, kind = direct
         /// </summary>
         string ExchangeConnectionString { get; }
-        
+
         /// <summary>
         /// connection for query, kind=fanout
         /// </summary>
@@ -34,7 +34,5 @@ namespace CoreNetCore.MQ
         Task<string> Resolve(string service, string type);
 
         event Action<ReceivedMessageEventArgs, Exception> HandleMessageErrors;
-
-        MessageEntry CreateMessage(ReceivedMessageEventArgs receivedMessage = null);
     }
 }

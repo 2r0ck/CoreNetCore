@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CoreNetCore.Core
+﻿namespace CoreNetCore.Core
 {
     public interface IMessageHandler
     {

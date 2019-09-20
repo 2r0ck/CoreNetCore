@@ -10,7 +10,7 @@ namespace CoreNetCore.MQ
     public class AppId : IAppId
     {
         public const string DEFAULT_UUID_FILE_NAME = "selfUUID.txt";
-        public const string CONFIG_KEY_UUID_FILE_NAME = "UUID_FILE_NAME";
+        public const string CONFIG_KEY_UUID_FILE_NAME = "ru:spinosa:UUID_FILE_NAME";
 
         private string _currentUID;
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace CoreNetCoreParallelTest.MQ
 {
@@ -25,7 +26,7 @@ namespace CoreNetCoreParallelTest.MQ
             var host = hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile("config1.json", true, true))
                        .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
                        .Build();
-            host.GetService<IPlatformService>().Run(null);
+            host.Services.GetService<IPlatformService>().StartAsync(default(CancellationToken));
             Trace.Flush();
         }
 
@@ -38,7 +39,7 @@ namespace CoreNetCoreParallelTest.MQ
             var host=hostBuilder.ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, Service1>())
                        .Build();
 
-            host.GetService<IPlatformService>().Run(null);
+            host.Services.GetService<IPlatformService>().StartAsync(default(CancellationToken));
         }
     }
 }

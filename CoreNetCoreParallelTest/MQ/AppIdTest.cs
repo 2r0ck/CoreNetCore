@@ -3,6 +3,7 @@ using CoreNetCoreParallelTest.TestServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Threading;
 
 namespace CoreNetCoreParallelTest.MQ
 {
@@ -29,7 +30,7 @@ namespace CoreNetCoreParallelTest.MQ
                        .ConfigureServices((builderContext, services) => services.AddScoped<IPlatformService, T>())
                        .Build();
 
-           host.GetService<IPlatformService>().Run(null);           
+            host.Services.GetService<IPlatformService>().StartAsync(default(CancellationToken));
         }
     }
 }

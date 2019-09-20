@@ -4,6 +4,8 @@ using CoreNetCoreParallelTest.TestServices.CustomService;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CoreNetCoreParallelTest.TestServices
 {
@@ -18,12 +20,13 @@ namespace CoreNetCoreParallelTest.TestServices
             AppId = appId;
         }
 
-        public void Run(string[] args)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
-           if(AppId.CurrentUID != Cs.AppId)
+            if (AppId.CurrentUID != Cs.AppId)
             {
                 throw new InvalidProgramException("Services appId not equals!");
             }
+           return Task.CompletedTask;
         }
     }
 }

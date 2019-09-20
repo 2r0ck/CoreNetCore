@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using CoreNetCore;
 using CoreNetCore.MQ;
 using Microsoft.Extensions.Configuration;
@@ -13,11 +15,10 @@ namespace CoreNetCoreTest.TestClasses
         {
             Configuration = configuration;
         }     
-        
-
-        public   void Run(string[] args)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             Trace.WriteLine($"ServiceIsRunning. Test config key = {Configuration["defaultConfigKey"]}");
+            return Task.CompletedTask;
         }
     }
 }

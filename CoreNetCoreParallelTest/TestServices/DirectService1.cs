@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace CoreNetCoreParallelTest.TestServices
 {
-    public class DirectService1 : IPlatformService
+    public class DirectService1 : IMyService
     {
         private const string NoNameMsg = "Name not decalred!";
         private const string NoRecNameMsg = "Reciever name not decalred!";
