@@ -166,7 +166,8 @@ namespace CoreNetCore.MQ
         {
             Cache.Set(key, cache_item, GetCacheOptions());
 
-            lock (linkCacheKeys) {
+            lock (linkCacheKeys)
+            {
                 if (!linkCacheKeys.Contains(key))
                 {
                     linkCacheKeys.Add(key);
@@ -206,7 +207,7 @@ namespace CoreNetCore.MQ
                         }
                     }
                     if (cancelTokenRefreshCache.IsCancellationRequested) return;
-                   await  SendToOperator(false);                    
+                    await SendToOperator(false);
                 }
             }
             catch (Exception ex)
@@ -300,7 +301,7 @@ namespace CoreNetCore.MQ
         /// </summary>
         /// <param name="isSelf"></param>
         /// <returns></returns>
-        private  Task<bool> SendToOperator(bool isSelf)
+        private Task<bool> SendToOperator(bool isSelf)
         {
             if (isSelf)
             {
@@ -361,7 +362,7 @@ namespace CoreNetCore.MQ
                                 };
                                 //отправляем скопом всех ожидающих процессов в одном запросе
                                 Connection.Publish(options, Encoding.UTF8.GetBytes(data_str), properties);
-                                
+
                                 //Trace.TraceInformation("Resolver publish->" + data_str);
                             }
                             return true;
@@ -456,7 +457,5 @@ namespace CoreNetCore.MQ
             Trace.TraceWarning($"Resolver: remove pending element fail. Key:{key}");
             return false;
         }
-
-       
     }
 }

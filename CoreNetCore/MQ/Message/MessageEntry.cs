@@ -157,11 +157,11 @@ namespace CoreNetCore.MQ
         }
 
 
-        //public Task<DataArgs<ViaElement>> ResponseOk<T>(T data)
-        //{
-        //    var dataArgs = new DataArgs<T>(data);
-        //    return ResponseOk<T>(dataArgs);
-        //}
+        public Task<DataArgs<ViaElement>> ResponseOk<T>(T data)
+        {
+            var dataArgs = new DataArgs<T>(data);
+            return ResponseOk<T>(dataArgs);
+        }
 
         public Task<DataArgs<ViaElement>> ResponseOk<T>(DataArgs<T> data) 
         {

@@ -6,7 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Tasks;
 
 namespace CoreNetCoreTest.TestCoreService
@@ -56,9 +56,11 @@ namespace CoreNetCoreTest.TestCoreService
             var hostBuilder = new CoreHostBuilder();
             var host = hostBuilder.Build();
 
-            host.DeclareQueryHandler("ping_nc", pingHandler);
+            var disp=host.Services.GetService<ICoreDispatcher>();
 
-            host.DeclareResponseHandler("res:ping_nc", responsePingHandler);
+            disp.DeclareQueryHandler("ping_nc", pingHandler);
+
+            disp.DeclareResponseHandler("res:ping_nc", responsePingHandler);
 
             host.StartAsync().ContinueWith(res =>
             {
@@ -86,7 +88,7 @@ namespace CoreNetCoreTest.TestCoreService
 
                 //request1
                 Trace.WriteLine("send request1..");
-                host.CreateMessage().RequestAsync(
+                (new MessageEntry(disp,null)).RequestAsync(
                     "platserv:appnetcore:1",
                     ExchangeTypes.EXCHANGETYPE_FANOUT,
                     "ping_nc",
@@ -116,7 +118,7 @@ namespace CoreNetCoreTest.TestCoreService
 
                 //request2
                 Trace.WriteLine("send request2..");
-                host.CreateMessage().RequestAsync(
+                (new MessageEntry(disp, null)).RequestAsync(
                     "platserv:appnetcore:1",
                     ExchangeTypes.EXCHANGETYPE_FANOUT,
                     "ping_nc",

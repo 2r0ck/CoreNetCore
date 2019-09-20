@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace CoreNetCoreTest
 {
@@ -90,7 +91,7 @@ namespace CoreNetCoreTest
                 Assert.Fail("UUID_FILE not found!");
             }
 
-            service.Run(null);
+            service.StartAsync(default(CancellationToken));
 
             Assert.IsTrue(true);
         }

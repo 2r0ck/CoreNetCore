@@ -39,7 +39,18 @@
         "cacheEntryTTL_sec": 600,
         "cachecapacity": 500,
         "pingperiod_ms": 60000,
-        "cache_renew_period_ms": 600000       
+        "cache_renew_period_ms": 600000,
+        "this": {
+          "namespace": "packaging",
+          "servicename": "test",
+          "majorversion": 1,
+          "subversion": 1,
+          "environment": "prod",
+          "container": "test",
+          "hostip": "",
+          "stack": "packaging",
+          "applicationname": "test"
+        }
       }
     }
   }

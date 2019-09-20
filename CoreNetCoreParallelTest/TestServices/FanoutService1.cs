@@ -1,5 +1,4 @@
-﻿using CoreNetCore;
-using CoreNetCore.Models;
+﻿using CoreNetCore.Models;
 using CoreNetCore.MQ;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -7,15 +6,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace CoreNetCoreParallelTest.TestServices
 {
-    public class FanoutService1 : IPlatformService
+    public class FanoutService1 : IMyService
     {
         private const string NoNameMsg = "Name not decalred!";
         private const string NoRecNameMsg = "Reciever name not decalred!";
-
 
         private Dictionary<string, string> QuestionAnswerDictionary = new Dictionary<string, string>()
         {
@@ -26,7 +23,7 @@ namespace CoreNetCoreParallelTest.TestServices
             {"Query3","Exit"}
         };
 
-        AutoResetEvent lockEvent = new AutoResetEvent(false);
+        private AutoResetEvent lockEvent = new AutoResetEvent(false);
 
         public ICoreConnection CoreConnection { get; }
         public IConfiguration Configuration { get; }
@@ -35,7 +32,7 @@ namespace CoreNetCoreParallelTest.TestServices
         public string RecName { get; private set; }
         public string SayMessage { get; private set; }
 
-        public FanoutService1(ICoreConnection coreConnection, IConfiguration configuration,IAppId appId)
+        public FanoutService1(ICoreConnection coreConnection, IConfiguration configuration, IAppId appId)
         {
             CoreConnection = coreConnection;
             Configuration = configuration;
@@ -43,15 +40,15 @@ namespace CoreNetCoreParallelTest.TestServices
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="args"></param>
         /// <remarks>
         /// params:
         /// 1)Current Service Name
         /// 2)Reciever Service name
-        /// 
-        /// 
+        ///
+        ///
         /// </remarks>
         public void Run(string[] args)
         {
@@ -66,7 +63,7 @@ namespace CoreNetCoreParallelTest.TestServices
                 throw new ArgumentNullException(NoRecNameMsg);
             }
 
-            SayMessage = args.Length == 3 ? args[2].ToString() : null; 
+            SayMessage = args.Length == 3 ? args[2].ToString() : null;
             CoreConnection.Connected += CoreConnection_Connected;
 
             CoreConnection.Start();
@@ -85,7 +82,6 @@ namespace CoreNetCoreParallelTest.TestServices
                     {
                         Name = exchangeName,
                         Type = ExchangeTypes.EXCHANGETYPE_FANOUT,
-                        
                     },
                     QueueParam = new ChannelQueueParam()
                     {
@@ -114,7 +110,6 @@ namespace CoreNetCoreParallelTest.TestServices
                     {
                         throw new InvalidOperationException("Неизвестное сообщение");
                     }
-                     
                 });
 
                 if (!string.IsNullOrEmpty(SayMessage) && QuestionAnswerDictionary.ContainsKey(SayMessage))
@@ -127,11 +122,7 @@ namespace CoreNetCoreParallelTest.TestServices
                 Trace.TraceError(ex.ToString());
                 throw;
             }
-            
-
-            
         }
-
 
         private void Say(string msg)
         {
@@ -146,12 +137,6 @@ namespace CoreNetCoreParallelTest.TestServices
             };
             Trace.TraceInformation($"Say {Name}: {msg}");
             CoreConnection.Publish(prod, Encoding.UTF8.GetBytes(msg), null);
-
         }
-
-        //private void RunAsProducer()
-        //{
-        //    throw new NotImplementedException();
-        //}
     }
 }

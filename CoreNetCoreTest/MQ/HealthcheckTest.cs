@@ -84,7 +84,8 @@ namespace CoreNetCoreTest.MQ
         {
             using (HttpClient client = new HttpClient())
             {
-                var result = client.GetStringAsync(url).Result;
+                var query = client.GetStringAsync(url);
+                var result = query.Result;
                 Assert.AreEqual(result?.Trim(), estimatedAnswer?.Trim(),true);
             }
         }
