@@ -1,7 +1,45 @@
 {
   "ru": {
     "spinosa": {
+      "auth": {
+        "crypto": {
+          "SALT": "salt_keY",
+          "IV": "_init_Vector_IV_"
+        }
+      },
+
+      "defaultConfigKey": "test value",
+      "UUID_FILE_NAME": "UUID_consoleApp.txt",
+      "mq": {
+        "autodelete": "False",
+        "durable": "True",
+        "healthcheckPort": 8049,
+        "maxRecoveryCount": 5,
+        "networkRecoveryInterval": "2000",
+        "host": {
+          "host": "localhost",
+          "mserv": {
+            "username": "admin",
+            "password": "root"
+          },
+          "port": "5672"
+        },
+        "queue": {
+          "ttl": "600000"
+        },
+        "exchange": {
+          "ttl": "600000"
+        }
+      },
       "starter": {
+        "registerselftimeout": 5000,
+        "requestexchangename": "input.operator.core",
+        "responseexchangename": "starter.output",
+        "requestdispatcherexchangename": "input.dispatcher.core",
+        "cacheEntryTTL_sec": 600,
+        "cachecapacity": 500,
+        "pingperiod_ms": 60000,
+        "cache_renew_period_ms": 600000,
         "this": {
           "namespace": "packaging",
           "servicename": "test",

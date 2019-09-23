@@ -34,7 +34,7 @@ namespace CoreNetCore.MQ
 
         public event Action<string> Started;
 
-        public event Action<ReceivedMessageEventArgs,Exception> HandleMessageErrors;
+        public event Action<ReceivedMessageEventArgs, Exception> HandleMessageErrors;
 
         public CoreDispatcher(IPrepareConfigService config, IAppId appId, ICoreConnection coreConnection, IResolver resolver, IHealthcheck healthcheck)
         {
@@ -113,7 +113,7 @@ namespace CoreNetCore.MQ
                     Connection.Listen(options, (ea) =>
                     {
                         Task.Run(() => this.HandleMessage(ea))
-                        .ContinueWith(res=> { this.HandleMessageErrors?.Invoke(ea,res.Exception); },TaskContinuationOptions.OnlyOnFaulted);
+                        .ContinueWith(res => { this.HandleMessageErrors?.Invoke(ea, res.Exception); }, TaskContinuationOptions.OnlyOnFaulted);
                     });
 
                     Trace.TraceInformation($"Bind {exchangeName} successed");
@@ -158,13 +158,13 @@ namespace CoreNetCore.MQ
                     if (!string.IsNullOrEmpty(methodName) && queryHandlers.TryGetValue(methodName, out handlers))
                     {
                         foreach (var action in handlers)
-                        {                           
+                        {
                             action(currentMsg);
                         }
                     }
                     else
                     {
-                        throw new CoreException($"Handler [{methodName}] not declared for this service"); 
+                        throw new CoreException($"Handler [{methodName}] not declared for this service");
                     }
                 }
                 else
@@ -198,14 +198,14 @@ namespace CoreNetCore.MQ
                     ea.Ack();
                 }
             }
-            catch (Exception ex )
+            catch (Exception ex)
             {
                 if (currentMsg.IsRequest && currentMsg.IsViaValidForResponse())
-                { 
-                    currentMsg.ResponseError(ex);                   
+                {
+                    currentMsg.ResponseError(ex);
                 }
                 throw ex;
-            }            
+            }
         }
 
         public bool DeclareQueryHandler(string actionName, Action<MessageEntry> handler)
@@ -240,7 +240,6 @@ namespace CoreNetCore.MQ
             return responceHandlers.TryAdd(actionName, new List<Action<MessageEntry, string>> { handler });
         }
 
-       
         public bool DeclareResponseCallback(string messageId, Action<string> callback, int? timeout)
         {
             bool success = true;
@@ -252,7 +251,7 @@ namespace CoreNetCore.MQ
                 }
                 Trace.TraceInformation($"Declare response callback. MessageId={messageId}");
                 responceCallbacks.AddOrUpdate(messageId, callback, (k, v) => callback);
-                return true;                
+                return true;
             }
             catch (Exception ex)
             {

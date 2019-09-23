@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CoreNetCore.MQ
@@ -6,6 +7,7 @@ namespace CoreNetCore.MQ
     public interface IHealthcheck
     {
         void AddCheck(Func<bool> check);
+
         Task StartAsync();
 
         void Stop();

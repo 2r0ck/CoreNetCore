@@ -1,22 +1,19 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace CoreNetCore.Utils
 {
-    public class HttpLocalWorker  
+    public class HttpLocalWorker
     {
-        bool disposeObject;
+        private bool disposeObject;
 
-        ConcurrentDictionary<string, Action<HttpListenerResponse>> handlers = new ConcurrentDictionary<string, Action<HttpListenerResponse>>();
+        private ConcurrentDictionary<string, Action<HttpListenerResponse>> handlers = new ConcurrentDictionary<string, Action<HttpListenerResponse>>();
 
-        bool shouldExit;
-        ManualResetEvent shouldExitWaitHandle;
+        private bool shouldExit;
+        private ManualResetEvent shouldExitWaitHandle;
 
         public int Port { get; }
 
@@ -31,7 +28,7 @@ namespace CoreNetCore.Utils
         {
             if (!HttpListener.IsSupported)
             {
-                throw new CoreException("HttpListener not supported.");                 
+                throw new CoreException("HttpListener not supported.");
             }
 
             await Task.Run(() =>
@@ -39,21 +36,20 @@ namespace CoreNetCore.Utils
                 var listener = new HttpListener();
                 listener.IgnoreWriteExceptions = true;
                 listener.Prefixes.Add($"http://*:{Port}/");
-                listener.Start();                
+                listener.Start();
                 start?.Invoke();
 
                 while (!shouldExit)
                 {
                     var contextAsyncResult = listener.BeginGetContext(
                             (IAsyncResult asyncResult) =>
-                            {
-                                if (listener!=null && listener.IsListening)
+                            {                              
+                                if (listener != null && listener.IsListening)
                                 {
                                     var context = listener.EndGetContext(asyncResult);
 
-
                                     Action<HttpListenerResponse> handle;
-                                    if (handlers.TryGetValue(context.Request.RawUrl,out handle))
+                                    if (handlers.TryGetValue(context.Request.RawUrl, out handle))
                                     {
                                         handle?.Invoke(context.Response);
                                     }
@@ -66,22 +62,22 @@ namespace CoreNetCore.Utils
                 end?.Invoke();
             });
         }
+
         public void StopAll()
         {
             shouldExit = true;
-            shouldExitWaitHandle.Set();            
+            shouldExitWaitHandle.Set();
         }
 
         public void AddGet(string url, Action<HttpListenerResponse> action)
         {
-            handlers.AddOrUpdate(url, action, (k,f)=> action);
+            handlers.AddOrUpdate(url, action, (k, f) => action);
         }
 
         public void Dispose()
         {
             if (!disposeObject)
             {
-
                 disposeObject = true;
             }
         }

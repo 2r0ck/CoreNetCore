@@ -24,37 +24,10 @@ namespace CoreNetCoreTest.Utils
             var host = hostBuilder.Build();
             var factory = host.Services.GetService<IConfiguration>();
 
-            var testValue = factory.GetStrValue("defaultConfigKey");
+            var testValue = factory.GetStrValue("ru:spinosa:defaultConfigKey");
             Assert.AreEqual("test value", testValue);
         }
-
-        [TestMethod]
-        public void CustomConfigFiles_Test()
-        {
-            //Set variables
-            var files = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\TestConfig"));
-            Environment.SetEnvironmentVariable(ConfigurationFactory.ENVRIOMENT_CONFIG_FILE_NAMES, string.Join(",", files));
-
-            var hostBuilder = new CoreHostBuilder();
-            var host = hostBuilder.Build();
-            var factory = host.Services.GetService<IConfiguration>();
-
-            //read json config
-            //1
-            var testValue = factory.GetStrValue("testJsonConfigKey");
-            Assert.AreEqual("jsonValue", testValue);
-            //2
-            var testValue2 = factory["parentJsonKey:childJsonKey"];
-            Assert.AreEqual("ValuehildJsonKey", testValue2);
-
-            //read xml config
-            //1
-            var testxmlvalue = factory.GetStrValue("testXmlKey");
-            Assert.AreEqual("xmlValue", testxmlvalue);
-            //2
-            var childXmlKeyValue = factory["parentXmlKey:childXmlKey"];
-            Assert.AreEqual("childXmlKeyValue", childXmlKeyValue);
-        }
+ 
 
         [TestMethod]
         public void EnvironmentConfig_Test()
@@ -101,7 +74,7 @@ namespace CoreNetCoreTest.Utils
             var hostBuilder = new CoreHostBuilder();
             var host = hostBuilder.Build();
             var configuration = host.Services.GetService<IConfiguration>();
-            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
+            configuration.GetSection("ru:spinosa:starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
 
             Assert.IsNotNull(cfg_starter?._this?.servicename);
         }
@@ -134,7 +107,7 @@ namespace CoreNetCoreTest.Utils
             var hostBuilder = new CoreHostBuilder();
             var host = hostBuilder.Build();
             var configuration = host.Services.GetService<IConfiguration>();
-            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
+            configuration.GetSection("ru:spinosa:starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
             Assert.IsTrue(cfg_starter.Validate());
         }
 
@@ -147,7 +120,7 @@ namespace CoreNetCoreTest.Utils
             var hostBuilder = new CoreHostBuilder();
             var host = hostBuilder.Build();
             var configuration = host.Services.GetService<IConfiguration>();
-            configuration.GetSection("starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
+            configuration.GetSection("ru:spinosa:starter").Bind(cfg_starter, options => options.BindNonPublicProperties = true);
             Assert.IsTrue(cfg_starter.Validate());
 
             cfg_starter._this.servicename = null;

@@ -46,19 +46,19 @@ namespace CoreNetCoreParallelTest.MQ
 
         
 
-        private void RunService<T>(string cfg, string[] args) where T : class, IPlatformService
+        private void RunService<T>(string cfg, string[] args) where T : class, IMyService
         {
             var hostBuilder = new CoreHostBuilder();
 
             var host = hostBuilder.ConfigureAppConfiguration((builderContext, configurationBuilder) => configurationBuilder.AddJsonFile(cfg, true, true))
                        .ConfigureServices((builderContext, services) =>
                        {
-                           services.AddScoped<IPlatformService, T>();
+                           services.AddScoped<IMyService, T>();
                        }
                        )
                        .Build();
 
-            host.GetService<IPlatformService>().Run(args);
+            host.Services.GetService<IMyService>().Run(args);
         }
     }
 }

@@ -1,61 +1,28 @@
 ﻿using CoreNetCore.Configuration;
+using CoreNetCore.Core;
+using CoreNetCore.Helpers;
 using CoreNetCore.MQ;
-using CoreNetCore.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Hosting.Internal;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration.Json;
+using System.Diagnostics;
 
 namespace CoreNetCore
 {
     public class CoreHostBuilder : IHostBuilder
     {
-        public const string ENVRIOMENT_ENVIRONMENTNAME = "ASPNETCORE_ENVIRONMENT";
-
-        private List<Action<IConfigurationBuilder>> _configureHostConfigActions = new List<Action<IConfigurationBuilder>>();
-        private List<Action<HostBuilderContext, IConfigurationBuilder>> _configureAppConfigActions = new List<Action<HostBuilderContext, IConfigurationBuilder>>();
-        private List<Action<HostBuilderContext, IServiceCollection>> _configureServicesActions = new List<Action<HostBuilderContext, IServiceCollection>>();
-
-        // Microsoft.Extensions.Hosting.Internal: internal interfaces
-        // private List<IConfigureContainerAdapter> _configureContainerActions = new List<IConfigureContainerAdapter>();
-        // private Hosting.IServiceFactoryAdapter _serviceProviderFactory = new ServiceFactoryAdapter<IServiceCollection>(new DefaultServiceProviderFactory());
-
         private bool _coreHostBuilt;
-
-        /// <summary>
-        /// Конфигурация хоста (необходим для инициализации переменных окружения IHostingEnvironment)
-        /// </summary>
-        private IConfiguration _hostConfiguration;
-
-        /// <summary>
-        /// Конфигурация приложения (включает конфигурацию хоста)
-        /// </summary>
-        private IConfiguration _appConfiguration;
-
-        /// <summary>
-        /// Главный копонент для связи сервисов при инициализации
-        /// </summary>
-        private HostBuilderContext _hostBuilderContext;
-
-        /// <summary>
-        /// Базовые переменные окружения
-        /// </summary>
-        private IHostingEnvironment _hostingEnvironment;
-
-       
 
         public CoreHostBuilder()
         {
             Properties = new Dictionary<object, object>();
+            BaseHostBulder = new HostBuilder();
         }
 
         public IDictionary<object, object> Properties { get; }
+        public HostBuilder BaseHostBulder { get; }
 
         public IHost Build()
         {
@@ -65,151 +32,72 @@ namespace CoreNetCore
             }
             _coreHostBuilt = true;
 
-            BuildHostConfiguration();
-            CreateHostingEnvironment();
-            CreateHostBuilderContext();
-            BuildAppConfiguration();
-            
-            //Create DI Resolver
-            IServiceProvider appServices = CreateServiceProvider();
-
-            if (appServices == null)
+            BaseHostBulder.ConfigureAppConfiguration((hostContext, configBuilder) =>
             {
-                throw new CoreException($"The BuildServiceProvider returned a null IServiceProvider.");
-            }
-            return new CoreHost(appServices);
-        }
+                configBuilder.AddConfiguration(new ConfigurationFactory(hostContext.HostingEnvironment).GetDefault());
+            });
 
-        private void BuildHostConfiguration()
-        {
-            var configBuilder = new ConfigurationBuilder();
-            foreach (var buildAction in _configureHostConfigActions)
+            BaseHostBulder.ConfigureServices((services) =>
             {
-                buildAction(configBuilder);
-            }
-            _hostConfiguration = configBuilder.Build();
-        }
+                services.AddMemoryCache();
 
-        private void CreateHostingEnvironment()
-        {
-            _hostingEnvironment = new HostingEnvironment()
+                services.AddScoped<IAppId, AppId>();
+                services.AddScoped<ICoreConnection, Connection>();
+                services.AddScoped<IHealthcheck, Healthcheck>();
+                services.AddScoped<ICoreDispatcher, CoreDispatcher>();
+                services.AddScoped<IPrepareConfigService, PrepareConfigService>();
+                services.AddScoped<IResolver, Resolver>();
+
+                //register core host
+                services.AddHostedService<CoreHost>();
+            });
+
+            var host = BaseHostBulder.Build();
+
+            var dispatcherHandlers = host.Services.GetServices<IMessageHandler>();
+
+            foreach (var handler in dispatcherHandlers)
             {
-                ApplicationName = _hostConfiguration[HostDefaults.ApplicationKey] ?? AppDomain.CurrentDomain.FriendlyName,
-                EnvironmentName = _hostConfiguration[HostDefaults.EnvironmentKey] ?? Environment.GetEnvironmentVariable(ENVRIOMENT_ENVIRONMENTNAME) ?? EnvironmentName.Production,
-                ContentRootPath = ResolveContentRootPath(_hostConfiguration[HostDefaults.ContentRootKey], AppContext.BaseDirectory),
-            };
-            _hostingEnvironment.ContentRootFileProvider = new PhysicalFileProvider(_hostingEnvironment.ContentRootPath);
-        }
+                handler.Register();
 
-        private string ResolveContentRootPath(string contentRootPath, string basePath)
-        {
-            if (string.IsNullOrEmpty(contentRootPath))
-            {
-                return basePath;
-            }
-            if (Path.IsPathRooted(contentRootPath))
-            {
-                return contentRootPath;
-            }
-            return Path.Combine(Path.GetFullPath(basePath), contentRootPath);
-        }
-
-        private void CreateHostBuilderContext()
-        {
-            _hostBuilderContext = new HostBuilderContext(Properties)
-            {
-                HostingEnvironment = _hostingEnvironment,
-                Configuration = _hostConfiguration
-            };
-        }
-
-        private void BuildAppConfiguration()
-        {
-            var configBuilder = new ConfigurationBuilder();
-            configBuilder.AddConfiguration(_hostConfiguration);
-            foreach (var buildAction in _configureAppConfigActions)
-            {
-                buildAction(_hostBuilderContext, configBuilder);
-            }
-            //set default configuration
-            configBuilder.AddConfiguration(new ConfigurationFactory(_hostingEnvironment).GetDefault());
-
-            _appConfiguration = configBuilder.Build();
-
-            _hostBuilderContext.Configuration = _appConfiguration;
-        }
-
-        private IServiceProvider CreateServiceProvider()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton(_hostingEnvironment);
-            services.AddSingleton(_hostBuilderContext);
-            services.AddSingleton(_appConfiguration);
-            services.AddOptions();
-            services.AddLogging();
-            services.AddMemoryCache();         
-
-            ConfigureCoreServices(_hostBuilderContext, services);
-
-            foreach (var configureServicesAction in _configureServicesActions)
-            {
-                configureServicesAction(_hostBuilderContext, services);
+                var infoHandler = handler as IRegisterHandler;
+                if (infoHandler != null)
+                {
+                    Trace.TraceInformation($"Handler {infoHandler.HandlerName} is registred.");
+                }
             }
 
-            return services.BuildServiceProvider();           
-        }
-
-#pragma warning disable RECS0154 // Parameter is never used
-        private void ConfigureCoreServices(HostBuilderContext hostBuilderContext, ServiceCollection services)
-#pragma warning restore RECS0154 // Parameter is never used
-        {
-            services.AddScoped<IAppId, AppId>();
-            services.AddScoped<ICoreConnection, Connection>();
-            services.AddScoped<IHealthcheck, Healthcheck>();
-            services.AddScoped<ICoreDispatcher, CoreDispatcher>();
-            services.AddScoped<IPrepareConfigService, PrepareConfigService>();
-            services.AddScoped<IResolver, Resolver>();
-            //services.AddTransient<IMessageEntry, MessageEntry>();
+            return host;
         }
 
         public IHostBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> configureDelegate)
         {
-            _configureAppConfigActions.Add(configureDelegate ?? throw new ArgumentNullException(nameof(configureDelegate)));
+            BaseHostBulder.ConfigureAppConfiguration(configureDelegate);
             return this;
         }
 
-        /// <summary>
-        /// Для поддержки подключения к другим контейнерам (NotImplemented)
-        /// </summary>
-        /// <typeparam name="TContainerBuilder"></typeparam>
-        /// <param name="configureDelegate"></param>
-        /// <returns></returns>
         public IHostBuilder ConfigureContainer<TContainerBuilder>(Action<HostBuilderContext, TContainerBuilder> configureDelegate)
         {
-            throw new NotImplementedException("ConfigureContainer not implemented..");
+            BaseHostBulder.ConfigureContainer(configureDelegate);
+            return this;
         }
 
         public IHostBuilder ConfigureHostConfiguration(Action<IConfigurationBuilder> configureDelegate)
         {
-            _configureHostConfigActions.Add(configureDelegate ?? throw new ArgumentNullException(nameof(configureDelegate)));
+            BaseHostBulder.ConfigureHostConfiguration(configureDelegate);
             return this;
         }
 
         public IHostBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> configureDelegate)
         {
-            _configureServicesActions.Add(configureDelegate ?? throw new ArgumentNullException(nameof(configureDelegate)));
+            BaseHostBulder.ConfigureServices(configureDelegate);
             return this;
         }
 
-        /// <summary>
-        /// Переопределяет фабрику по умолчанию (NotImplemented)
-        /// </summary>
-        /// <typeparam name="TContainerBuilder"></typeparam>
-        /// <param name="factory"></param>
-        /// <returns></returns>
         public IHostBuilder UseServiceProviderFactory<TContainerBuilder>(IServiceProviderFactory<TContainerBuilder> factory)
         {
-            throw new NotImplementedException("UseServiceProviderFactory not implemented..");
+            BaseHostBulder.UseServiceProviderFactory(factory);
+            return this;
         }
     }
-}
+};

@@ -1,6 +1,5 @@
 ﻿using CoreNetCore.Configuration;
 using CoreNetCore.Utils;
-using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -42,13 +41,12 @@ namespace CoreNetCore.MQ
                     {
                         writer.WriteLine(result);
                     }
-
-                }catch(Exception ex)
+                }
+                catch (Exception ex)
                 {
                     Trace.TraceError("Healthcheck error!");
                     Trace.TraceError(ex.ToString());
                 }
-
             });
 
             await http.StartAsync(

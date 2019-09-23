@@ -1,7 +1,12 @@
 ﻿using CoreNetCore;
+using CoreNetCore.Configuration;
+using CoreNetCore.Core;
+using CoreNetCore.Helpers;
 using CoreNetCore.Models;
 using CoreNetCore.MQ;
 using CoreNetCore.Utils;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Diagnostics;
@@ -14,12 +19,25 @@ namespace CoreNetCoreTest.TestCoreService
     [TestClass]
     public class MoskService
     {
-        private TaskCompletionSource<bool> handlerSet = new TaskCompletionSource<bool>();
-        private TaskCompletionSource<bool> querySet = new TaskCompletionSource<bool>();
-        private TaskCompletionSource<bool> callbackSet = new TaskCompletionSource<bool>();
+        //были успешно отправлены 2 запроса (один с ответом в хендлер, другой в колбек)
+        private static TaskCompletionSource<bool> receiveHandlerSet1 = new TaskCompletionSource<bool>();
+
+        private static TaskCompletionSource<bool> receiveHandlerSet2 = new TaskCompletionSource<bool>();
+
+        //были обработаны 2 запроса
+        private static TaskCompletionSource<bool> querySet1 = new TaskCompletionSource<bool>();
+
+        private static TaskCompletionSource<bool> querySet2 = new TaskCompletionSource<bool>();
+
+        //получен ответ в хендлер
+        private static TaskCompletionSource<bool> responseHandlerSet = new TaskCompletionSource<bool>();
+
+        //получен ответ в колбек
+        private static TaskCompletionSource<bool> callbackSet = new TaskCompletionSource<bool>();
 
         public bool _resultTest;
-        object lobj = new object();
+        private object lobj = new object();
+
         public bool resultTest
         {
             get
@@ -37,148 +55,147 @@ namespace CoreNetCoreTest.TestCoreService
                     _resultTest = value;
                 }
             }
-        }      
+        }
 
         [TestMethod]
         //НЕОБХОДИМ ЗАПУЩЕННЫЙ OPERATOR!
-        public void MyService()
+        public async Task MyService()
         {
-            var timeoutPoint = Task.Delay(30000).ContinueWith(res => { Trace.TraceWarning("test timeout (30c)"); resultTest = false; });
+            var timeoutPoint = Task.Delay(60000).ContinueWith(res => { Trace.TraceWarning("test timeout (1 min)"); return new bool[] { false }; });
 
-            var successPoints = Task.WhenAll(querySet.Task, handlerSet.Task, callbackSet.Task).ContinueWith(res =>
+            var successPoints = Task.WhenAll(
+               receiveHandlerSet1.Task,
+               receiveHandlerSet2.Task,
+               querySet1.Task,
+               querySet2.Task,
+               responseHandlerSet.Task,
+               callbackSet.Task
+                ).ContinueWith(reslt => { Trace.TraceInformation("successPoints done"); return reslt.Result; });
+
+            var host = new CoreHostBuilder()
+                .ConfigureServices(sc =>
+                {
+                    sc.AddScoped<IPlatformService, MyTestService>();
+
+                    sc.AddScoped<IMessageHandler, MyQueryHanlder>();
+                    sc.AddScoped<IMessageHandler, MyResponseHanlder>();
+                }).Build();
+
+            await host.StartAsync();
+            var resTask = await Task.WhenAny(successPoints, timeoutPoint);
+            resultTest = resTask.Result.All(x => x);
+            Assert.IsTrue(resultTest);
+        }
+
+        private class MyTestService : MessageSenderBase, IPlatformService
+        {
+            private readonly IPrepareConfigService config;
+
+            public MyTestService(ICoreDispatcher dispatcher, IPrepareConfigService config) : base(dispatcher)
             {
-                var results = res.Result;
-                Trace.TraceInformation("successPoints done");
-                resultTest = results.All(x => x);
-            });
-     
+                this.config = config;
+            }
 
-            var hostBuilder = new CoreHostBuilder();
-            var host = hostBuilder.Build();
-
-            host.DeclareQueryHandler("ping_nc", pingHandler);
-
-            host.DeclareResponseHandler("res:ping_nc", responsePingHandler);
-
-            host.StartAsync().ContinueWith(res =>
+            public Task StartAsync(CancellationToken cancellationToken)
             {
-               if (res.Exception != null)
-                {
-                    Trace.WriteLine(res.Exception);
-                    
-                }
-                else
-                {
-                    Trace.WriteLine("App STARTED!");
-                }
+                Trace.TraceInformation("MyTestService is started");
+                var serviceName = $"{config.Starter._this._namespace}:{config.Starter._this.servicename}:{config.Starter._this.majorversion}";
 
-                var data = new MyType1()
-                {
-                    MyProperty = 1,
-                    MyProperty2 = "ping"
-                };
-
-                var data_res = new
-                {
-                    MyProperty = 2,
-                    MyProperty2 = "value response"
-                };
-
-                //request1
-                Trace.WriteLine("send request1..");
-                host.CreateMessage().RequestAsync(
-                    "platserv:appnetcore:1",
-                    ExchangeTypes.EXCHANGETYPE_FANOUT,
-                    "ping_nc",
-                    new DataArgs<MyType1>(data),
-
-                    "res:ping_nc",
-                    data_res.ToJson(),
-
-                    null)
-                    .ContinueWith(result =>
-                    {
-                        if (result.Exception != null)
-                        {
-                            Trace.WriteLine(result.Exception);
-                        }
-                        else
-                        {
-                            Trace.WriteLine("request1 send successfully");
-                        }
-                    }).Wait();
-
-                var data2 = new MyType1()
-                {
-                    MyProperty = 2,
-                    MyProperty2 = "PING"
-                };
-
-                //request2
-                Trace.WriteLine("send request2..");
-                host.CreateMessage().RequestAsync(
-                    "platserv:appnetcore:1",
-                    ExchangeTypes.EXCHANGETYPE_FANOUT,
-                    "ping_nc",
-                    new DataArgs<MyType1>(data2),
-                    (result) =>
-                    {
-                        var obj = result.FromJson<DataArgs<object>>();
-                        if (obj.result == false)
-                        {
-                            Trace.WriteLine("Error>>" + obj.error);
-                        }
-                        else
-                        {
-                            Trace.WriteLine($"Callback Handler  Data:[{result}]");
-                            callbackSet.SetResult(true);
-                        }
-                    }, new MessageEntryParam() { Timeout = 5000 })
+                var request1 = CreateMessage().RequestAsync(serviceName,
+                     ExchangeTypes.EXCHANGETYPE_FANOUT,
+                        "queryHandler",
+                        new DataArgs<string>("Test_String"),
+                        "resp:handler",
+                        "test_context_data",
+                        null)
                         .ContinueWith(result =>
                         {
                             if (result.Exception != null)
                             {
-                                Trace.WriteLine(result.Exception);
+                                throw result.Exception;
                             }
-                            else
-                            {
-                                Trace.WriteLine("request2 send successfully");
-                            }
-                        }); 
-            });
-          
+                            if (!receiveHandlerSet1.Task.IsCompleted)
+                                receiveHandlerSet1.SetResult(true);
+                            Console.WriteLine("request1 send successfully");
+                        });
 
-            Task.WaitAny(timeoutPoint, successPoints);
-
-            Assert.IsTrue(resultTest);
-        }
-
-        private void responsePingHandler(MessageEntry arg1, string arg2)
-        {
-            Trace.WriteLine($"Response Handler by Context:[{arg2.FromJson<MyType1>().ToJson()}]; Data:[{arg1.ReceivedMessage.GetMessageData<DataArgs<string>>().ToJson()}]");
-            handlerSet.SetResult(true);
-        }
-
-        private void pingHandler(MessageEntry obj)
-        {
-            try
-            {
-                var data = obj.ReceivedMessage.GetMessageData<DataArgs<MyType1>>();
-                Trace.WriteLine("Request Handler Data->" + data.ToJson());
-
-                obj.ResponseOk(new DataArgs<string>(" net core answer:" + data.data.MyProperty2 + data.data.MyProperty));
-                querySet.SetResult(true);
+                var request2 = CreateMessage().RequestAsync(serviceName,
+                   ExchangeTypes.EXCHANGETYPE_FANOUT,
+                      "queryHandler",
+                      new DataArgs<string>("Test_String2"),
+                      (response) =>
+                      {
+                          var obj = response.FromJson<DataArgs<object>>();
+                          if (obj.result == false)
+                          {
+                              Console.WriteLine("Received response error>>" + obj.error);
+                          }
+                          else
+                          {
+                              Trace.TraceInformation($"Received response 2. Data: {response}.");
+                              if (!callbackSet.Task.IsCompleted)
+                                  callbackSet.SetResult(true);
+                          }
+                      },
+                      null)
+                      .ContinueWith(result =>
+                      {
+                          if (result.Exception != null)
+                          {
+                              throw result.Exception;
+                          }
+                          if (!receiveHandlerSet2.Task.IsCompleted)
+                              receiveHandlerSet2.SetResult(true);
+                          Console.WriteLine("request 2 send successfully");
+                      });
+                return Task.WhenAll(request1, request2);
             }
-            catch (Exception ex)
+        }
+
+        private class MyQueryHanlder : QueryHandlerBase
+        {
+            public override string HandlerName => "queryHandler";
+
+            public override Action<MessageEntry> Handler => Worker;
+
+            public MyQueryHanlder(ICoreDispatcher dispatcher) : base(dispatcher)
             {
-                obj.ResponseError(ex);
+            }
+
+            private void Worker(MessageEntry msg)
+            {
+                Trace.TraceInformation($"Received query. Data: {msg.ReceivedMessage.GetMessageContentString()}");
+                // throw new Exception("test exception");
+                msg.ResponseOk("MyQueryHanlder - ok!");
+                if (!string.IsNullOrEmpty(msg.ReceivedMessage.GetVia().GetLast().responseHandlerName))
+                {
+                    if (!querySet1.Task.IsCompleted)
+                        querySet1.SetResult(true); //by handler
+                }
+                else
+                {
+                    if (!querySet2.Task.IsCompleted)
+                        querySet2.SetResult(true); //by callback
+                }
             }
         }
 
-        private class MyType1
+        private class MyResponseHanlder : ResponseHandlerBase
         {
-            public int MyProperty { get; set; }
-            public string MyProperty2 { get; set; }
+            public override string HandlerName => "resp:handler";
+
+            public override Action<MessageEntry, string> Handler => Worker;
+
+            public MyResponseHanlder(ICoreDispatcher dispatcher) : base(dispatcher)
+            {
+            }
+
+            private void Worker(MessageEntry msg, string dataContext)
+            {
+                Trace.TraceInformation($"Received response. Data: {msg.ReceivedMessage.GetMessageContentString()}. DataConext: {dataContext}");
+                if (!responseHandlerSet.Task.IsCompleted)
+                    responseHandlerSet.SetResult(true);
+            }
         }
     }
 }
