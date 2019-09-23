@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CoreNetCore
 {
@@ -14,12 +15,12 @@ namespace CoreNetCore
         private readonly ICoreDispatcher _dispatcher;
         private readonly IServiceProvider _serviceProvider;
         private readonly IApplicationLifetime _appLifetime;
-        private readonly IPlatformService _platformService;
+        
 
-        public CoreHost(IServiceProvider serviceProvider, ICoreDispatcher dispatcher, IHealthcheck healthcheck, ICoreConnection coreConnection, IApplicationLifetime appLifetime, IPlatformService platformService)
+        public CoreHost(IServiceProvider serviceProvider, ICoreDispatcher dispatcher, IHealthcheck healthcheck, ICoreConnection coreConnection, IApplicationLifetime appLifetime)
         {
             _appLifetime = appLifetime ?? throw new CoreException("AppLifetime not defined");
-            this._platformService = platformService;
+            
             _serviceProvider = serviceProvider ?? throw new CoreException("ServiceProvider not defined");  
             _coreConnection = coreConnection ?? throw new CoreException("CoreConnection not defined");
             _healthcheck = healthcheck ?? throw new CoreException("Healthcheck not defined");
@@ -73,8 +74,20 @@ namespace CoreNetCore
 
             _coreConnection.Start();
             continueStart.WaitOne();
+
+
+            var platformService = _serviceProvider.GetService<IPlatformService>();
+
+            if (platformService != null)
+            {
+                return Task.WhenAny(_healthcheck.StartAsync(), platformService.StartAsync(stoppingToken));
+            }
+            else //run without service
+            {
+                return _healthcheck.StartAsync();
+            }
+
             
-            return Task.WhenAny(_healthcheck.StartAsync(), _platformService.StartAsync(stoppingToken));
         }
     }
 }

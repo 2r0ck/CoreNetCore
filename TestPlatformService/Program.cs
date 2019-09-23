@@ -43,13 +43,13 @@ namespace TestPlatformService
                 })
                 .ConfigureServices(sc =>
                 {
-                    sc.AddScoped<IPlatformService, MyService1>();
+                  //  sc.AddScoped<IPlatformService, MyService1>();
 
                     sc.AddScoped<IMessageHandler, MyQueryHanlder>();
                     sc.AddScoped<IMessageHandler, MyResponseHanlder>();
                 })
             .Build();
-
+            
             host.RunAsync().GetAwaiter().GetResult();
         }
 
