@@ -4,8 +4,10 @@ using CoreNetCore.MQ;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace CoreNetCoreTest.MQ
 {
@@ -15,42 +17,46 @@ namespace CoreNetCoreTest.MQ
 
 
         [TestMethod]
-        public void HealthcheckTesting1()
+        public async Task HealthcheckTesting1()
         {
             var hostBuilder = new CoreHostBuilder();
             var host = hostBuilder.Build();
 
             var hs = host.Services.GetService<IHealthcheck>();
+#pragma warning disable CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
             hs.StartAsync();
+#pragma warning restore CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
             var configService = host.Services.GetService<IPrepareConfigService>();          
 
             string healthcheckUrl = $"Http://localhost:{configService.MQ.healthcheckPort}/healthcheck";
 
             Thread.Sleep(1000);
 
-            CheckAnwer(healthcheckUrl, "True");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), true);
 
             hs.AddCheck(() => true);
-            CheckAnwer(healthcheckUrl, "True");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), true);
 
             hs.AddCheck(() => false);
-            CheckAnwer(healthcheckUrl, "False");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), false);
 
             hs.AddCheck(() => true);
-            CheckAnwer(healthcheckUrl, "False");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), false);
 
             hs.Stop();
         }
 
 
         [TestMethod]
-        public void HealthcheckTesting2()
+        public async Task HealthcheckTesting2()
         {
             var hostBuilder = new CoreHostBuilder();
             var host = hostBuilder.Build();
 
             var hs = host.Services.GetService<IHealthcheck>();
+#pragma warning disable CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
             hs.StartAsync();
+#pragma warning restore CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
 
             var configService = host.Services.GetService<IPrepareConfigService>();
 
@@ -66,27 +72,31 @@ namespace CoreNetCoreTest.MQ
 
             hs.AddCheck(handler);
 
-            CheckAnwer(healthcheckUrl, "True");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), true);
 
             a = 6;
-            CheckAnwer(healthcheckUrl, "True");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), true);
 
             a = 13;
-            CheckAnwer(healthcheckUrl, "False");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), false);
 
             a = 0;
-            CheckAnwer(healthcheckUrl, "True");
+            Assert.AreEqual(await CheckAnwer(healthcheckUrl), true);
 
             hs.Stop();
         }
 
-        private void CheckAnwer(string url, string estimatedAnswer)
+        private async Task<bool>  CheckAnwer(string url)
         {
             using (HttpClient client = new HttpClient())
             {
-                var query = client.GetStringAsync(url);
-                var result = query.Result;
-                Assert.AreEqual(result?.Trim(), estimatedAnswer?.Trim(),true);
+                //https://rancher.com/docs/rancher/v1.3/en/cattle/health-checks/                
+
+                var resp = await client.GetAsync(url);
+                Trace.TraceInformation($"Url: [{url}]. StatusCode={resp.StatusCode}({(int)resp.StatusCode})");
+                //HTTP Responds 2xx / 3xx,
+                return ((int)resp.StatusCode >= 200) && ((int)resp.StatusCode <= 399);
+
             }
         }
     }

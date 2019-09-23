@@ -7,23 +7,6 @@ namespace CoreNetCore.Utils
     public static class Extensions
     {
 
-        public static bool? GetBooleanValue(this IConfiguration config, string key, bool assert = false)
-        {
-            var value = GetStrValue(config, key, assert);
-            bool res =false;
-
-            if (bool.TryParse(value, out res))
-            {
-                return res;
-            }
-
-            if (assert)
-            {
-                throw new CoreException($"Config key parse error [${key}]");
-            }
-            return null;
-        }
-
         public static string GetStrValue(this IConfiguration config, string key, bool assert = false)
         {
             var value = config.GetValue<string>(key);
@@ -34,23 +17,7 @@ namespace CoreNetCore.Utils
             return value;
         }
 
-        public static int? GetIntValue(this IConfiguration config, string key, bool assert = false)
-        {
-            var value = GetStrValue(config, key, assert);
-            int res = 0;
-
-            if (int.TryParse(value, out res))
-            {
-                return res;
-            }
-
-            if (assert)
-            {
-                throw new CoreException($"Config key parse error [${key}]");
-            }
-            return null;
-        }
-
+    
         public static string ToJson<T>(this T obj,bool assert=false) 
         {
             try
