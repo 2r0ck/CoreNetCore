@@ -104,7 +104,7 @@ namespace CoreNetCore.MQ
                          var key = GetKey(element.Namespace, element.service, element.version ?? 0);
                          try
                          {
-                             if (element.result)
+                             if (element.result == true)
                              {
                                  var links = element?.link;
 
@@ -246,7 +246,7 @@ namespace CoreNetCore.MQ
             string name_space = cfg_starter._this._namespace;
             string service = cfg_starter._this.servicename;
             int version = cfg_starter._this.majorversion ?? 0;
-            string sub_ver = cfg_starter._this.subversion;
+            int sub_ver = cfg_starter._this.subversion ?? 0;
 
             TaskCompletionSource<LinkEntry[]> context;
             if (!GetOrGeneratePendingContext(name_space, service, version, sub_ver, true, out context))
@@ -391,7 +391,7 @@ namespace CoreNetCore.MQ
         /// lock необходим для того, чтобы операция добавления и возврата значений была атомарна
         /// отдельный метод необходим для  того, чтобы знать добавляется или возвращается элемент
         /// </remarks>
-        private bool GetOrGeneratePendingContext(string name_space, string service, int version, string sub_version, bool isSelf, out TaskCompletionSource<LinkEntry[]> context, bool isCacheUpdate = false)
+        private bool GetOrGeneratePendingContext(string name_space, string service, int version, int? sub_version, bool isSelf, out TaskCompletionSource<LinkEntry[]> context, bool isCacheUpdate = false)
         {
             lock (pending)
             {

@@ -14,13 +14,13 @@ namespace CoreNetCore.Models
 
         public int? version { get; set; }
 
-        public string sub_version { get; set; }
+        public int? sub_version { get; set; }
 
         public string type { get; set; }
 
         public LinkEntry[] link { get; set; }
 
-        public bool result { get; set; }
+        public bool? result { get; set; }
 
         public string error { get; set; }
     }

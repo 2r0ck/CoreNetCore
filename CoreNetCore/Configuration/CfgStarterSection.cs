@@ -40,7 +40,7 @@ namespace CoreNetCore.Configuration
         public int? majorversion { get; set; }
 
         
-        public string subversion { get; set; }
+        public int? subversion { get; set; }
         public string ttl { get; set; }
  
     }
